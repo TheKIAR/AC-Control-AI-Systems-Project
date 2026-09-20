@@ -14,7 +14,7 @@ class DataGenerator:
         raise ValueError("Unsupported method. Choose 'supervised' or 'unsupervised'.")
 
     def generate_supervised_data(self, num_samples=10):
-        return [(i, i + 1, 1 if i % 2 == 0 else 0) for i in range(num_samples)]
+        return [[i, i + 1, 1 if i % 2 == 0 else 0] for i in range(num_samples)]
 
     def generate_unsupervised_data(self, num_samples=10):
         return [[i, i * i] for i in range(num_samples)]
