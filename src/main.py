@@ -463,7 +463,9 @@ class DemoApp(tk.Tk):
             self, bg=self.BG, highlightthickness=0, bd=0
         )
         self._ambient_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self._ambient_canvas.lower()
+        # NOTE: Canvas.lower() without args would hit the canvas-ITEM
+        # operation (needs a tag); window stacking needs Misc.lower.
+        tk.Misc.lower(self._ambient_canvas)
         self._ambient_phase = 0
         self._ambient_particles = []
 
