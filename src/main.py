@@ -241,6 +241,10 @@ class DemoApp(tk.Tk):
 
     def toggle_theme(self):
         self.theme = "light" if self.theme == "dark" else "dark"
+        try:
+            self.unbind_all("<MouseWheel>")
+        except Exception:
+            pass
         if self._animation_job is not None:
             try:
                 self.after_cancel(self._animation_job)
@@ -300,7 +304,8 @@ class DemoApp(tk.Tk):
             "<Configure>",
             lambda event: self.canvas.itemconfig(self.canvas_window, width=event.width),
         )
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.unbind_all("<MouseWheel>")
+        self.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
 
         header = ttk.Frame(self, padding=(22, 14, 22, 10), style="Root.TFrame")
         header.pack(side="top", fill="x", before=self.canvas)
@@ -457,6 +462,38 @@ class DemoApp(tk.Tk):
         self.data_chart = self._chart_host(self.data_card)
         self._reset_chart_slots()
         self._start_pulse()
+        self._build_module_strip(body)
+
+    def _build_module_strip(self, parent):
+        strip = tk.Frame(parent, bg=self.BG)
+        strip.pack(fill="x", pady=(0, 12))
+
+        modules = (
+            ("01", "FUZZY", self.BLUE),
+            ("02", "RL CORE", self.ACCENT_2),
+            ("03", "DATA", self.GREEN),
+        )
+        for code, name, accent in modules:
+            cell = tk.Frame(
+                strip, bg=self.CARD,
+                highlightbackground=self.BORDER, highlightthickness=1
+            )
+            cell.pack(side="left", fill="x", expand=True, padx=(0, 8))
+            tk.Frame(cell, bg=accent, width=3).pack(side="left", fill="y")
+            text_frame = tk.Frame(cell, bg=self.CARD)
+            text_frame.pack(side="left", fill="both", expand=True, padx=10, pady=7)
+            tk.Label(
+                text_frame, text=code, bg=self.CARD, fg=accent,
+                font=("Consolas", 8, "bold")
+            ).pack(side="left")
+            tk.Label(
+                text_frame, text=name, bg=self.CARD, fg=self.TEXT,
+                font=("Consolas", 8, "bold")
+            ).pack(side="left", padx=(8, 0))
+            tk.Label(
+                text_frame, text="● LIVE", bg=self.CARD, fg=self.MUTED,
+                font=("Consolas", 7)
+            ).pack(side="right")
 
     def _create_ambient_layer(self):
         self._ambient_canvas = tk.Canvas(
@@ -478,12 +515,16 @@ class DemoApp(tk.Tk):
 
         self._ambient_canvas.bind("<Configure>", lambda _event: self._draw_ambient_frame())
 
-    def _start_ambient_animation(self):
+    def _cancel_ambient_job(self):
         if self._ambient_job is not None:
             try:
                 self.after_cancel(self._ambient_job)
             except Exception:
                 pass
+            self._ambient_job = None
+
+    def _start_ambient_animation(self):
+        self._cancel_ambient_job()
         self._ambient_phase = 0
         self._draw_ambient_frame()
         self._ambient_job = self.after(70, self._animate_ambient_frame)
@@ -518,14 +559,20 @@ class DemoApp(tk.Tk):
             fill=line_color, width=1
         )
 
-        scan_x = inset + ((self._ambient_phase * 1.1) % max(width - inset * 2, 1))
+        travel = max(width - inset * 2, 1)
+        scan_x = inset + ((self._ambient_phase * 1.45) % travel)
         canvas.create_line(
-            scan_x, inset, scan_x, inset + 12,
-            fill=accent_color, width=1
+            scan_x, inset, scan_x, inset + 18,
+            fill=accent_color, width=2
         )
         canvas.create_line(
-            width - scan_x, height - inset - 12,
-            width - scan_x, height - inset,
+            scan_x - 7, inset, scan_x + 7, inset,
+            fill=accent_color, width=1
+        )
+        bottom_x = width - inset - ((self._ambient_phase * 1.45) % travel)
+        canvas.create_line(
+            bottom_x, height - inset - 18,
+            bottom_x, height - inset,
             fill=accent_color, width=2
         )
 
@@ -555,7 +602,7 @@ class DemoApp(tk.Tk):
             return
         self._ambient_phase += 1
         self._draw_ambient_frame()
-        self._ambient_job = self.after(45, self._animate_ambient_frame)
+        self._ambient_job = self.after(70, self._animate_ambient_frame)
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
@@ -669,10 +716,10 @@ class DemoApp(tk.Tk):
         # Little continuous heartbeat: blink the header status dot.
         try:
             if self._status_dot is not None and self._status_dot.winfo_exists():
-                color = self.GREEN if self._pulse_on else self.MUTED
+                color = self.GREEN if self._pulse_on else self.BORDER
                 self._status_dot.configure(fg=color)
                 self._pulse_on = not self._pulse_on
-                self._pulse_job = self.after(700, self._pulse_tick)
+                self._pulse_job = self.after(1100, self._pulse_tick)
             else:
                 self._pulse_job = None
         except Exception:
@@ -939,6 +986,7 @@ class DemoApp(tk.Tk):
         self.temp_var.set(22)
         self.rl_var.set(5)
         self.data_count_var.set(5)
+        self._last_temp = 22
         self.method_var.set("supervised")
         self.preset_var.set("◉  NORMAL 22°")
         self._refresh_all()
