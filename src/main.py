@@ -83,33 +83,33 @@ def run_demo(temp_value=22, rl_episodes=5, data_points=5, data_method="supervise
 
 
 class DemoApp(tk.Tk):
-    BG = "#070b14"
-    PANEL = "#0d1320"
-    CARD = "#111a29"
-    CARD_2 = "#151f31"
-    BORDER = "#24344d"
-    TEXT = "#e8eef8"
-    MUTED = "#8290a8"
-    ACCENT = "#6ee7ff"
-    ACCENT_2 = "#9b8cff"
-    GREEN = "#39e6a3"
-    RED = "#ff5577"
-    BLUE = "#4aa8ff"
+    BG = "#111827"
+    PANEL = "#1f2937"
+    CARD = "#243244"
+    CARD_2 = "#2d3a4d"
+    BORDER = "#3b4758"
+    TEXT = "#f3f4f6"
+    MUTED = "#a6afbd"
+    ACCENT = "#60a5fa"
+    ACCENT_2 = "#a78bfa"
+    GREEN = "#34d399"
+    RED = "#f87171"
+    BLUE = "#60a5fa"
 
     THEMES = {
         "dark": {
-            "BG": "#070b14",
-            "PANEL": "#0d1320",
-            "CARD": "#111a29",
-            "CARD_2": "#151f31",
-            "BORDER": "#24344d",
-            "TEXT": "#e8eef8",
-            "MUTED": "#8290a8",
-            "ACCENT": "#6ee7ff",
-            "ACCENT_2": "#9b8cff",
-            "GREEN": "#39e6a3",
-            "RED": "#ff5577",
-            "BLUE": "#4aa8ff",
+            "BG": "#111827",
+            "PANEL": "#1f2937",
+            "CARD": "#243244",
+            "CARD_2": "#2d3a4d",
+            "BORDER": "#3b4758",
+            "TEXT": "#f3f4f6",
+            "MUTED": "#a6afbd",
+            "ACCENT": "#60a5fa",
+            "ACCENT_2": "#a78bfa",
+            "GREEN": "#34d399",
+            "RED": "#f87171",
+            "BLUE": "#60a5fa",
         },
         "light": {
             "BG": "#e9eef5",
@@ -164,6 +164,7 @@ class DemoApp(tk.Tk):
         self._build_ui()
         self._bind_keyboard()
         self._refresh_all()
+        self._start_frame_animation()
 
     def _configure_styles(self):
         self.style.configure("Root.TFrame", background=self.BG)
@@ -187,11 +188,11 @@ class DemoApp(tk.Tk):
         )
         self.style.configure(
             "Value.TLabel", background=self.PANEL, foreground=self.ACCENT,
-            font=("Consolas", 11, "bold")
+            font=("Segoe UI", 11, "bold")
         )
         self.style.configure(
             "Status.TLabel", background=self.PANEL, foreground=self.GREEN,
-            font=("Consolas", 9, "bold")
+            font=("Segoe UI", 9, "bold")
         )
         self.style.configure(
             "Action.TButton", background=self.CARD_2, foreground=self.TEXT,
@@ -223,7 +224,7 @@ class DemoApp(tk.Tk):
             foreground=[("readonly", self.TEXT)],
         )
         self.style.configure(
-            "Dark.Horizontal.TScale", background=self.PANEL,
+            "Modern.Horizontal.TScale", background=self.PANEL,
             troughcolor="#202c42", bordercolor=self.BORDER,
             lightcolor=self.ACCENT, darkcolor=self.ACCENT
         )
@@ -259,6 +260,7 @@ class DemoApp(tk.Tk):
         self._build_ui()
         self._bind_keyboard()
         self._refresh_all()
+        self._start_frame_animation()
 
     def _bind_keyboard(self):
         self.bind("<Up>", lambda e: self._keyboard_temp(1))
@@ -284,6 +286,7 @@ class DemoApp(tk.Tk):
             pass
 
     def _build_ui(self):
+        self._create_frame_animation()
         self.canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -322,12 +325,12 @@ class DemoApp(tk.Tk):
         status_frame.pack(side="right", padx=(20, 0))
         self._status_dot = tk.Label(
             status_frame, text="● ", bg=self.PANEL, fg=self.GREEN,
-            font=("Consolas", 10, "bold")
+            font=("Segoe UI", 10, "bold")
         )
         self._status_dot.pack(side="left", padx=(10, 0), pady=8)
         tk.Label(
             status_frame, textvariable=self.status_var, bg=self.PANEL,
-            fg=self.TEXT, font=("Consolas", 9, "bold")
+            fg=self.TEXT, font=("Segoe UI", 9, "bold")
         ).pack(side="left", padx=(0, 10), pady=8)
 
         self.theme_button = ttk.Button(
@@ -346,7 +349,7 @@ class DemoApp(tk.Tk):
 
         tk.Label(
             controls, text="Controls", bg=self.PANEL, fg=self.TEXT,
-            font=("Consolas", 11, "bold")
+            font=("Segoe UI", 11, "bold")
         ).pack(anchor="w", padx=18, pady=(15, 4))
 
         tk.Label(
@@ -372,7 +375,7 @@ class DemoApp(tk.Tk):
         method_row.pack(fill="x", padx=18, pady=(3, 16))
         tk.Label(
             method_row, text="DATA METHOD", bg=self.PANEL, fg=self.MUTED,
-            font=("Consolas", 9, "bold")
+            font=("Segoe UI", 9, "bold")
         ).pack(side="left")
         combo = ttk.Combobox(
             method_row, textvariable=self.method_var,
@@ -395,14 +398,14 @@ class DemoApp(tk.Tk):
         tk.Label(
             action_row, textvariable=self.fuzzy_result_var,
             bg=self.PANEL, fg=self.ACCENT,
-            font=("Consolas", 10, "bold")
+            font=("Segoe UI", 10, "bold")
         ).pack(side="right")
 
         preset_row = tk.Frame(controls, bg=self.PANEL)
         preset_row.pack(fill="x", padx=18, pady=(0, 16))
         tk.Label(
             preset_row, text="Presets", bg=self.PANEL, fg=self.MUTED,
-            font=("Consolas", 9, "bold")
+            font=("Segoe UI", 9, "bold")
         ).pack(side="left")
         for text, temp in (
             ("Cold 16°C", 16),
@@ -415,26 +418,15 @@ class DemoApp(tk.Tk):
                 style="Action.TButton",
             ).pack(side="left", padx=(10, 0))
 
-        telemetry = tk.Frame(
-            body, bg=self.CARD,
-            highlightbackground=self.BORDER, highlightthickness=1
-        )
-        telemetry.pack(fill="x", pady=(0, 14))
-        tk.Label(
-            telemetry, textvariable=self.telemetry_var, bg=self.CARD,
-            fg=self.ACCENT, font=("Consolas", 9, "bold"),
-            anchor="w"
-        ).pack(fill="x", padx=14, pady=10)
-
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
         tk.Label(
             output_title, text="Results", bg=self.BG, fg=self.TEXT,
-            font=("Consolas", 12, "bold")
+            font=("Segoe UI", 12, "bold")
         ).pack(side="left")
         tk.Label(
             output_title, text="Live", bg=self.BG, fg=self.MUTED,
-            font=("Consolas", 8, "bold")
+            font=("Segoe UI", 8, "bold")
         ).pack(side="right")
 
         self.output_grid = tk.Frame(body, bg=self.BG)
@@ -459,145 +451,52 @@ class DemoApp(tk.Tk):
         self.data_chart = self._chart_host(self.data_card)
         self._reset_chart_slots()
 
-    def _build_module_strip(self, parent):
-        strip = tk.Frame(parent, bg=self.BG)
-        strip.pack(fill="x", pady=(0, 12))
+    def _create_frame_animation(self):
+        self._frame_canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0, bd=0)
+        self._frame_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        tk.Misc.lower(self._frame_canvas)
+        self._frame_phase = 0
 
-        modules = (
-            ("01", "FUZZY", self.BLUE),
-            ("02", "RL CORE", self.ACCENT_2),
-            ("03", "DATA", self.GREEN),
-        )
-        for code, name, accent in modules:
-            cell = tk.Frame(
-                strip, bg=self.CARD,
-                highlightbackground=self.BORDER, highlightthickness=1
-            )
-            cell.pack(side="left", fill="x", expand=True, padx=(0, 8))
-            tk.Frame(cell, bg=accent, width=3).pack(side="left", fill="y")
-            text_frame = tk.Frame(cell, bg=self.CARD)
-            text_frame.pack(side="left", fill="both", expand=True, padx=10, pady=7)
-            tk.Label(
-                text_frame, text=code, bg=self.CARD, fg=accent,
-                font=("Consolas", 8, "bold")
-            ).pack(side="left")
-            tk.Label(
-                text_frame, text=name, bg=self.CARD, fg=self.TEXT,
-                font=("Consolas", 8, "bold")
-            ).pack(side="left", padx=(8, 0))
-            tk.Label(
-                text_frame, text="● LIVE", bg=self.CARD, fg=self.MUTED,
-                font=("Consolas", 7)
-            ).pack(side="right")
-
-    def _create_ambient_layer(self):
-        self._ambient_canvas = tk.Canvas(
-            self, bg=self.BG, highlightthickness=0, bd=0
-        )
-        self._ambient_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
-        # NOTE: Canvas.lower() without args would hit the canvas-ITEM
-        # operation (needs a tag); window stacking needs Misc.lower.
-        tk.Misc.lower(self._ambient_canvas)
-        self._ambient_phase = 0
-        self._ambient_particles = []
-
-        for index in range(10):
-            x = 0.03 + ((index * 0.137) % 0.94)
-            y = 0.04 + ((index * 0.271) % 0.91)
-            radius = 1
-            speed = 0.00008 + (index % 4) * 0.000025
-            self._ambient_particles.append([x, y, radius, speed, index % 2])
-
-        self._ambient_canvas.bind("<Configure>", lambda _event: self._draw_ambient_frame())
-
-    def _cancel_ambient_job(self):
-        if self._ambient_job is not None:
+    def _start_frame_animation(self):
+        if getattr(self, "_frame_job", None):
             try:
-                self.after_cancel(self._ambient_job)
+                self.after_cancel(self._frame_job)
             except Exception:
                 pass
-            self._ambient_job = None
+        self._frame_phase = 0
+        self._animate_frame()
 
-    def _start_ambient_animation(self):
-        self._cancel_ambient_job()
-        self._ambient_phase = 0
-        self._draw_ambient_frame()
-        self._ambient_job = self.after(70, self._animate_ambient_frame)
-
-    def _draw_ambient_frame(self):
-        if not hasattr(self, "_ambient_canvas"):
-            return
-
-        canvas = self._ambient_canvas
-        canvas.delete("all")
-        width = max(canvas.winfo_width(), 1)
-        height = max(canvas.winfo_height(), 1)
-
-        line_color = self.BORDER
-        accent_color = self.ACCENT
-
-        inset = 7
-        canvas.create_line(
-            inset, inset, width - inset, inset,
-            fill=line_color, width=1
-        )
-        canvas.create_line(
-            inset, height - inset, width - inset, height - inset,
-            fill=line_color, width=1
-        )
-        canvas.create_line(
-            inset, inset, inset, height - inset,
-            fill=line_color, width=1
-        )
-        canvas.create_line(
-            width - inset, inset, width - inset, height - inset,
-            fill=line_color, width=1
-        )
-
-        travel = max(width - inset * 2, 1)
-        scan_x = inset + ((self._ambient_phase * 1.45) % travel)
-        canvas.create_line(
-            scan_x, inset, scan_x, inset + 18,
-            fill=accent_color, width=2
-        )
-        canvas.create_line(
-            scan_x - 7, inset, scan_x + 7, inset,
-            fill=accent_color, width=1
-        )
-        bottom_x = width - inset - ((self._ambient_phase * 1.45) % travel)
-        canvas.create_line(
-            bottom_x, height - inset - 18,
-            bottom_x, height - inset,
-            fill=accent_color, width=2
-        )
-
-        for particle in self._ambient_particles:
-            particle[0] += particle[3] * (1 if particle[4] == 0 else -1)
-            if particle[0] > 0.985:
-                particle[0] = 0.015
-            elif particle[0] < 0.015:
-                particle[0] = 0.985
-
-            x = particle[0] * width
-            y = particle[1] * height
-            r = particle[2]
-            canvas.create_oval(
-                x - r, y - r, x + r, y + r,
-                fill=self.BORDER, outline=""
-            )
-
-        self._ambient_canvas.create_line(
-            width * 0.03, height * 0.985,
-            width * 0.18, height * 0.985,
-            fill=self.BORDER, width=1
-        )
-
-    def _animate_ambient_frame(self):
+    def _animate_frame(self):
         if not self.winfo_exists():
             return
-        self._ambient_phase += 1
-        self._draw_ambient_frame()
-        self._ambient_job = self.after(70, self._animate_ambient_frame)
+        c = self._frame_canvas
+        c.delete("all")
+        w = max(c.winfo_width(), 1)
+        h = max(c.winfo_height(), 1)
+        inset = 5
+        perimeter = 2 * (w - 2 * inset) + 2 * (h - 2 * inset)
+        distance = (self._frame_phase * 8) % perimeter
+
+        # One large, bright segment continuously travels around the entire window.
+        if distance < w - 2 * inset:
+            x = inset + distance
+            c.create_line(x, inset, min(x + 150, w - inset), inset,
+                          fill=self.ACCENT, width=5, capstyle="round")
+        elif distance < w - 2 * inset + h - 2 * inset:
+            y = inset + distance - (w - 2 * inset)
+            c.create_line(w - inset, y, w - inset, min(y + 150, h - inset),
+                          fill=self.ACCENT, width=5, capstyle="round")
+        elif distance < 2 * (w - 2 * inset) + h - 2 * inset:
+            x = w - inset - (distance - (w - 2 * inset + h - 2 * inset))
+            c.create_line(max(inset, x - 150), h - inset, x, h - inset,
+                          fill=self.ACCENT, width=5, capstyle="round")
+        else:
+            y = h - inset - (distance - (2 * (w - 2 * inset) + h - 2 * inset))
+            c.create_line(inset, max(inset, y - 150), inset, y,
+                          fill=self.ACCENT, width=5, capstyle="round")
+
+        self._frame_phase += 1
+        self._frame_job = self.after(28, self._animate_frame)
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
@@ -607,12 +506,12 @@ class DemoApp(tk.Tk):
         top.pack(fill="x")
         tk.Label(
             top, text=label, bg=self.PANEL, fg=self.MUTED,
-            font=("Consolas", 9, "bold")
+            font=("Segoe UI", 9, "bold")
         ).pack(side="left")
 
         value_label = tk.Label(
             top, text="", bg=self.PANEL, fg=self.ACCENT,
-            font=("Consolas", 11, "bold")
+            font=("Segoe UI", 11, "bold")
         )
         value_label.pack(side="right")
 
@@ -625,10 +524,19 @@ class DemoApp(tk.Tk):
         update_value()
         variable.trace_add("write", update_value)
 
+        def on_scale(_value=None):
+            try:
+                value = max(minimum, min(maximum, int(round(float(variable.get())))))
+                if int(variable.get()) != value:
+                    variable.set(value)
+                callback()
+            except (TypeError, ValueError, tk.TclError):
+                pass
+
         scale = ttk.Scale(
             row, from_=minimum, to=maximum, orient="horizontal",
-            variable=variable, command=callback,
-            style="Dark.Horizontal.TScale"
+            variable=variable, command=on_scale,
+            style="Modern.Horizontal.TScale"
         )
         scale.pack(fill="x", pady=(7, 0))
         self._add_step_buttons(row, variable, minimum, maximum, callback)
@@ -649,7 +557,7 @@ class DemoApp(tk.Tk):
         ).pack(side="left", padx=(6, 0))
         tk.Label(
             buttons, text=f"INTEGER STEP  /  {minimum}—{maximum}",
-            bg=self.PANEL, fg="#4f607b", font=("Consolas", 8)
+            bg=self.PANEL, fg="#4f607b", font=("Segoe UI", 8)
         ).pack(side="right")
 
     def _step_value(self, variable, amount, minimum, maximum, callback):
@@ -669,11 +577,11 @@ class DemoApp(tk.Tk):
         header.pack(fill="x", padx=14, pady=(12, 6))
         tk.Label(
             header, text=title, bg=self.CARD, fg=self.TEXT,
-            font=("Consolas", 10, "bold")
+            font=("Segoe UI", 10, "bold")
         ).pack(side="left")
         tk.Label(
             header, text=subtitle, bg=self.CARD, fg=self.MUTED,
-            font=("Consolas", 8)
+            font=("Segoe UI", 8)
         ).pack(side="right")
         return card
 
@@ -693,32 +601,6 @@ class DemoApp(tk.Tk):
         widget.configure(bg=self.CARD, highlightthickness=0, bd=0)
         widget.pack(fill="both", expand=True)
         return canvas
-
-    def _start_pulse(self):
-        self._stop_pulse()
-        self._pulse_on = True
-        self._pulse_tick()
-
-    def _stop_pulse(self):
-        if getattr(self, "_pulse_job", None) is not None:
-            try:
-                self.after_cancel(self._pulse_job)
-            except Exception:
-                pass
-            self._pulse_job = None
-
-    def _pulse_tick(self):
-        # Little continuous heartbeat: blink the header status dot.
-        try:
-            if self._status_dot is not None and self._status_dot.winfo_exists():
-                color = self.GREEN if self._pulse_on else self.BORDER
-                self._status_dot.configure(fg=color)
-                self._pulse_on = not self._pulse_on
-                self._pulse_job = self.after(1100, self._pulse_tick)
-            else:
-                self._pulse_job = None
-        except Exception:
-            self._pulse_job = None
 
     def _make_figure(self, width=10, height=4.2):
         fig = Figure(figsize=(width, height), dpi=100, facecolor=self.CARD)
@@ -758,6 +640,7 @@ class DemoApp(tk.Tk):
             self._build_fuzzy_figure(temp_value)
         try:
             self._fuzzy_marker.set_xdata([temp_value, temp_value])
+            self._fuzzy_glow.set_xdata([temp_value, temp_value])
             self._fuzzy_canvas.draw_idle()
         except Exception:
             pass
@@ -792,9 +675,12 @@ class DemoApp(tk.Tk):
             gradient, extent=[10, 35, 0, 1], aspect="auto",
             interpolation="bicubic", alpha=0.88
         )
+        glow = ax.axvline(
+            temp_value, color=self.ACCENT, linewidth=12, alpha=0.14
+        )
         marker = ax.axvline(
             temp_value, color="#ffffff", linestyle=":",
-            linewidth=2.4, alpha=0.95
+            linewidth=3.0, alpha=1.0
         )
         ax.set_xlim(10, 35)
         ax.set_ylim(0, 1)
@@ -807,6 +693,7 @@ class DemoApp(tk.Tk):
         self._fuzzy_fig = fig
         self._fuzzy_ax = ax
         self._fuzzy_marker = marker
+        self._fuzzy_glow = glow
         self._fuzzy_canvas = self._embed_canvas(fig, self.fuzzy_chart)
 
     def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent):
@@ -884,7 +771,6 @@ class DemoApp(tk.Tk):
         system.set_temperature(temperature)
         result = system.evaluate(temperature)
         self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result.upper()}")
-        self._update_telemetry(result)
         if animate and hasattr(self, "_last_temp") and self._last_temp != temperature:
             self._animate_temperature(self._last_temp, temperature)
         else:
@@ -898,21 +784,6 @@ class DemoApp(tk.Tk):
     def _on_settings_changed(self, *_):
         self.preset_var.set("CUSTOM")
         self.status_var.set("PARAMETER CHANGED  //  RUN SYSTEM TO REFRESH")
-        self._update_telemetry()
-
-    def _update_telemetry(self, fuzzy_result=None):
-        if fuzzy_result is None:
-            system = FuzzySystem()
-            temperature = int(self.temp_var.get())
-            system.set_temperature(temperature)
-            fuzzy_result = system.evaluate(temperature)
-        self.telemetry_var.set(
-            f"TEMP {int(self.temp_var.get()):02d}°C   │   "
-            f"Temperature: {int(self.temp_var.get())}°C   •   "
-            f"Fuzzy: {fuzzy_result.title()}   •   "
-            f"RL Episodes: {int(self.rl_var.get())}   •   "
-            f"Data Points: {int(self.data_count_var.get())}"
-        )
 
     def _apply_preset_value(self, name, temperature):
         self.preset_var.set(name)
@@ -950,7 +821,6 @@ class DemoApp(tk.Tk):
                 int(self.data_count_var.get()), self.method_var.get()
             )
             self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result['fuzzy_result'].upper()}")
-            self._update_telemetry(result["fuzzy_result"])
             self._render_all(result)
             self.status_var.set("SYSTEM ONLINE  //  LIVE")
         except Exception as exc:
@@ -966,7 +836,6 @@ class DemoApp(tk.Tk):
                 int(self.data_count_var.get()), self.method_var.get()
             )
             self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result['fuzzy_result'].upper()}")
-            self._update_telemetry(result["fuzzy_result"])
             self._render_all(result)
             self.status_var.set("SYSTEM ONLINE  //  LIVE")
         except Exception as exc:
@@ -992,12 +861,11 @@ class DemoApp(tk.Tk):
                 child.destroy()
             tk.Label(
                 host, text=f"OUTPUT ERROR\n{text}", bg=self.CARD, fg=self.RED,
-                font=("Consolas", 9), justify="left"
+                font=("Segoe UI", 9), justify="left"
             ).pack(expand=True)
 
     def destroy(self):
-        self._stop_pulse()
-        for job in (self._animation_job, self._ambient_job):
+        for job in (getattr(self, "_animation_job", None), getattr(self, "_frame_job", None)):
             if job is not None:
                 try:
                     self.after_cancel(job)
