@@ -5,8 +5,8 @@ import os
 # Project directories
 # __file__ = <root>/src/common/config.py -> parents[2] = <root>
 from pathlib import Path
+
 BASE_DIR = str(Path(__file__).resolve().parents[2])
-import os
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 RAW_DATA_DIR = os.path.join(DATA_DIR, 'raw')
 PROCESSED_DATA_DIR = os.path.join(DATA_DIR, 'processed')

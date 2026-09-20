@@ -1,18 +1,20 @@
+from pathlib import Path
+import json
+
+
 class DataGenerator:
-    def __init__(self, method='supervised'):
+    def __init__(self, method="supervised"):
         self.method = method
 
     def generate_data(self, *args, **kwargs):
-        if self.method == 'supervised':
+        if self.method == "supervised":
             return self.generate_supervised_data(*args, **kwargs)
-        elif self.method == 'unsupervised':
+        if self.method == "unsupervised":
             return self.generate_unsupervised_data(*args, **kwargs)
-        else:
-            raise ValueError("Unsupported method. Choose 'supervised' or 'unsupervised'.")
+        raise ValueError("Unsupported method. Choose 'supervised' or 'unsupervised'.")
 
     def generate_supervised_data(self, num_samples=10):
-        # Simple deterministic dataset for the project demo
-        return [(i, i + 1, 1 if i % 2 == 0 else 0) for i in range(num_samples)]
+        return [[i, i + 1, 1 if i % 2 == 0 else 0] for i in range(num_samples)]
 
     def generate_unsupervised_data(self, num_samples=10):
         return [[i, i * i] for i in range(num_samples)]
@@ -24,9 +26,11 @@ class DataGenerator:
         return [item ** 2 if isinstance(item, (int, float)) else item for item in raw_data]
 
     def save_data(self, data, filename):
-        # Implement the logic to save the generated data to a file
-        pass
+        path = Path(filename)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return path
 
     def load_data(self, filename):
-        # Implement the logic to load data from a file
-        pass
+        path = Path(filename)
+        return json.loads(path.read_text(encoding="utf-8"))
