@@ -272,10 +272,15 @@ class DemoApp(tk.Tk):
         self.rl_var = tk.IntVar(value=5)
         self.data_count_var = tk.IntVar(value=5)
         self.method_var = tk.StringVar(value="supervised")
+        self.preset_var = tk.StringVar(value="CUSTOM")
         self.status_var = tk.StringVar(value="SYSTEM READY")
         self.fuzzy_result_var = tk.StringVar(value="")
+        self.telemetry_var = tk.StringVar(value="")
+        self._animation_job = None
+        self._last_temp = int(self.temp_var.get())
 
         self._build_ui()
+        self._bind_keyboard()
         self._refresh_all()
 
     def _configure_styles(self):
@@ -397,6 +402,23 @@ class DemoApp(tk.Tk):
             child.destroy()
         self._build_ui()
         self._refresh_all()
+
+    def _bind_keyboard(self):
+        self.bind("<Up>", lambda e: self._keyboard_temp(1))
+        self.bind("<Down>", lambda e: self._keyboard_temp(-1))
+        self.bind("<Left>", lambda e: self._keyboard_step(-1))
+        self.bind("<Right>", lambda e: self._keyboard_step(1))
+        self.bind("<r>", lambda e: self.run_demo())
+        self.bind("<R>", lambda e: self.run_demo())
+        self.bind("<space>", lambda e: self.run_demo())
+        self.bind("<Escape>", lambda e: self.reset_controls())
+
+    def _keyboard_temp(self, amount):
+        self.temp_var.set(max(10, min(35, int(self.temp_var.get()) + amount)))
+        self._update_fuzzy_only()
+
+    def _keyboard_step(self, amount):
+        self._step_value(self.rl_var, amount, 1, 20, self._on_settings_changed)
 
     def _on_mousewheel(self, event):
         try:
@@ -541,6 +563,23 @@ class DemoApp(tk.Tk):
             fg=self.ACCENT,
             font=("Consolas", 10, "bold"),
         ).pack(side="right")
+
+        preset_row = tk.Frame(controls, bg=self.PANEL)
+        preset_row.pack(fill="x", padx=18, pady=(0, 16))
+        tk.Label(preset_row, text="QUICK PRESETS", bg=self.PANEL, fg=self.MUTED,
+                 font=("Consolas", 9, "bold")).pack(side="left")
+        preset_combo = ttk.Combobox(
+            preset_row, textvariable=self.preset_var,
+            values=["CUSTOM", "FIXED COLD  •  16°C", "FIXED NORMAL  •  22°C", "FIXED HOT  •  30°C"],
+            state="readonly", width=24, font=("Segoe UI", 10)
+        )
+        preset_combo.pack(side="right")
+        preset_combo.bind("<<ComboboxSelected>>", self._apply_preset)
+
+        telemetry = tk.Frame(body, bg=self.CARD, highlightbackground=self.BORDER, highlightthickness=1)
+        telemetry.pack(fill="x", pady=(0, 14))
+        tk.Label(telemetry, textvariable=self.telemetry_var, bg=self.CARD, fg=self.ACCENT,
+                 font=("Consolas", 9, "bold"), anchor="w").pack(fill="x", padx=14, pady=10)
 
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
@@ -730,6 +769,7 @@ class DemoApp(tk.Tk):
         canvas = FigureCanvasTkAgg(fig, master=self.fuzzy_chart)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+        self._fuzzy_canvas = canvas
 
     def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent):
         for child in parent.winfo_children():
@@ -784,20 +824,73 @@ class DemoApp(tk.Tk):
             self.GREEN,
         )
 
-    def _update_fuzzy_only(self):
+    def _update_fuzzy_only(self, animate=True):
         temperature = int(self.temp_var.get())
         system = FuzzySystem()
         system.set_temperature(temperature)
         result = system.evaluate(temperature)
         self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result.upper()}")
-        self._draw_fuzzy(temperature)
+        self._update_telemetry(result)
+        if animate and hasattr(self, "_last_temp") and self._last_temp != temperature:
+            self._animate_temperature(self._last_temp, temperature)
+        else:
+            self._draw_fuzzy(temperature)
+        self._last_temp = temperature
         self.status_var.set("FUZZY FIELD LIVE")
 
     def _on_temperature_changed(self, *_):
         self._update_fuzzy_only()
 
     def _on_settings_changed(self, *_):
+        self.preset_var.set("CUSTOM")
         self.status_var.set("PARAMETER CHANGED  //  RUN SYSTEM TO REFRESH")
+        self._update_telemetry()
+
+    def _update_telemetry(self, fuzzy_result=None):
+        if fuzzy_result is None:
+            system = FuzzySystem()
+            temperature = int(self.temp_var.get())
+            system.set_temperature(temperature)
+            fuzzy_result = system.evaluate(temperature)
+        self.telemetry_var.set(
+            f"TEMP {int(self.temp_var.get()):02d}°C   │   "
+            f"FUZZY {fuzzy_result.upper():<22} │   "
+            f"RL {int(self.rl_var.get()):02d} EP   │   "
+            f"DATA {int(self.data_count_var.get()):02d}   │   "
+            f"{self.method_var.get().upper():<11} │   ● ONLINE"
+        )
+
+    def _apply_preset(self, *_):
+        temperatures = {
+            "FIXED COLD  •  16°C": 16,
+            "FIXED NORMAL  •  22°C": 22,
+            "FIXED HOT  •  30°C": 30,
+        }
+        preset = self.preset_var.get()
+        if preset in temperatures:
+            self.temp_var.set(temperatures[preset])
+            self._update_fuzzy_only()
+
+    def _animate_temperature(self, start, target):
+        if self._animation_job is not None:
+            try:
+                self.after_cancel(self._animation_job)
+            except Exception:
+                pass
+        steps = max(4, min(14, abs(target - start) * 2))
+        current = 0
+        def step():
+            nonlocal current
+            current += 1
+            progress = current / steps
+            smooth = progress * progress * (3 - 2 * progress)
+            self._draw_fuzzy(start + (target - start) * smooth)
+            if current < steps:
+                self._animation_job = self.after(18, step)
+            else:
+                self._draw_fuzzy(target)
+                self._animation_job = None
+        step()
 
     def _refresh_all(self):
         try:
@@ -808,6 +901,7 @@ class DemoApp(tk.Tk):
                 self.method_var.get(),
             )
             self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result['fuzzy_result'].upper()}")
+            self._update_telemetry(result["fuzzy_result"])
             self._render_all(result)
             self.status_var.set("SYSTEM ONLINE  //  LIVE")
         except Exception as exc:
@@ -838,6 +932,7 @@ class DemoApp(tk.Tk):
         self.rl_var.set(5)
         self.data_count_var.set(5)
         self.method_var.set("supervised")
+        self.preset_var.set("FIXED NORMAL  •  22°C")
         self._refresh_all()
 
     def _set_error(self, text):
