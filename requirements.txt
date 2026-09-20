@@ -1,0 +1,13 @@
+# Core: needed to run the app + GUI + tests
+matplotlib==3.11.2
+numpy==2.5.3
+pytest==9.1.1
+
+# Optional: only for notebooks / experiments (install if you need them)
+# pandas
+# seaborn
+# jupyter
+# scikit-fuzzy
+# gymnasium
+# torch
+# tensorflow
