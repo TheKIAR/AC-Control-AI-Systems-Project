@@ -19,8 +19,8 @@ except ImportError:
     TK_AVAILABLE = False
 
 try:
-    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg # type: ignore
+    from matplotlib.figure import Figure # type: ignore
     FIGURE_AVAILABLE = True
 except Exception:
     FigureCanvasTkAgg = None
@@ -164,7 +164,6 @@ class DemoApp(tk.Tk):
         self._build_ui()
         self._bind_keyboard()
         self._refresh_all()
-        self._start_frame_animation()
 
     def _configure_styles(self):
         self.style.configure("Root.TFrame", background=self.BG)
@@ -188,11 +187,11 @@ class DemoApp(tk.Tk):
         )
         self.style.configure(
             "Value.TLabel", background=self.PANEL, foreground=self.ACCENT,
-            font=("Segoe UI", 11, "bold")
+            font=("Consolas", 11, "bold")
         )
         self.style.configure(
             "Status.TLabel", background=self.PANEL, foreground=self.GREEN,
-            font=("Segoe UI", 9, "bold")
+            font=("Consolas", 9, "bold")
         )
         self.style.configure(
             "Action.TButton", background=self.CARD_2, foreground=self.TEXT,
@@ -309,7 +308,7 @@ class DemoApp(tk.Tk):
 
         title_frame = ttk.Frame(header, style="Root.TFrame")
         title_frame.pack(side="left")
-        ttk.Label(title_frame, text="AI Control System", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(title_frame, text="AI CONTROL", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             title_frame,
             text="Fuzzy Logic  •  Reinforcement Learning  •  Data Processing",
@@ -323,7 +322,7 @@ class DemoApp(tk.Tk):
         status_frame.pack(side="right", padx=(20, 0))
         self._status_dot = tk.Label(
             status_frame, text="● ", bg=self.PANEL, fg=self.GREEN,
-            font=("Segoe UI", 10, "bold")
+            font=("Consolas", 10, "bold")
         )
         self._status_dot.pack(side="left", padx=(10, 0), pady=8)
         tk.Label(
@@ -372,7 +371,7 @@ class DemoApp(tk.Tk):
         method_row = tk.Frame(controls, bg=self.PANEL)
         method_row.pack(fill="x", padx=18, pady=(3, 16))
         tk.Label(
-            method_row, text="Data Method", bg=self.PANEL, fg=self.MUTED,
+            method_row, text="DATA METHOD", bg=self.PANEL, fg=self.MUTED,
             font=("Consolas", 9, "bold")
         ).pack(side="left")
         combo = ttk.Combobox(
@@ -600,60 +599,6 @@ class DemoApp(tk.Tk):
         self._draw_ambient_frame()
         self._ambient_job = self.after(70, self._animate_ambient_frame)
 
-    def _create_frame_layer(self):
-        self._frame_canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0, bd=0)
-        self._frame_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
-        tk.Misc.lower(self._frame_canvas)
-        self._frame_canvas.bind("<Configure>", lambda _event: self._draw_frame_animation())
-
-    def _start_frame_animation(self):
-        self._stop_frame_animation()
-        self._frame_phase = 0
-        self._draw_frame_animation()
-        self._ambient_job = self.after(55, self._animate_frame)
-
-    def _stop_frame_animation(self):
-        if self._ambient_job is not None:
-            try:
-                self.after_cancel(self._ambient_job)
-            except Exception:
-                pass
-            self._ambient_job = None
-
-    def _draw_frame_animation(self):
-        if self._frame_canvas is None:
-            return
-        c = self._frame_canvas
-        c.delete("all")
-        w = max(c.winfo_width(), 1)
-        h = max(c.winfo_height(), 1)
-        inset = 9
-        px = inset + ((self._frame_phase * 1.0) % max(w - inset * 2, 1))
-        py = inset + ((self._frame_phase * 0.58) % max(h - inset * 2, 1))
-        c.create_line(px, inset, min(px + 70, w - inset), inset, fill=self.BORDER, width=2)
-        c.create_line(w - inset, py, w - inset, min(py + 55, h - inset), fill=self.BORDER, width=2)
-        ax = inset + ((self._frame_phase * 0.72 + w * 0.42) % max(w - inset * 2, 1))
-        c.create_line(ax, h - inset, min(ax + 30, w - inset), h - inset, fill=self.ACCENT, width=2)
-        corner = 20
-        for x1, y1, x2, y2 in (
-            (inset, inset, inset + corner, inset),
-            (inset, inset, inset, inset + corner),
-            (w - inset - corner, inset, w - inset, inset),
-            (w - inset, inset, w - inset, inset + corner),
-            (inset, h - inset, inset + corner, h - inset),
-            (inset, h - inset - corner, inset, h - inset),
-            (w - inset - corner, h - inset, w - inset, h - inset),
-            (w - inset, h - inset - corner, w - inset, h - inset),
-        ):
-            c.create_line(x1, y1, x2, y2, fill=self.BORDER, width=1)
-
-    def _animate_frame(self):
-        if not self.winfo_exists():
-            return
-        self._frame_phase += 1
-        self._draw_frame_animation()
-        self._ambient_job = self.after(55, self._animate_frame)
-
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
         row.pack(fill="x", padx=18, pady=7)
@@ -682,11 +627,8 @@ class DemoApp(tk.Tk):
 
         scale = ttk.Scale(
             row, from_=minimum, to=maximum, orient="horizontal",
-            variable=variable, command=lambda _v: (
-                variable.set(max(minimum, min(maximum, int(round(float(variable.get())))))),
-                callback()
-            )[1],
-            style="Modern.Horizontal.TScale"
+            variable=variable, command=callback,
+            style="Dark.Horizontal.TScale"
         )
         scale.pack(fill="x", pady=(7, 0))
         self._add_step_buttons(row, variable, minimum, maximum, callback)
@@ -707,7 +649,7 @@ class DemoApp(tk.Tk):
         ).pack(side="left", padx=(6, 0))
         tk.Label(
             buttons, text=f"INTEGER STEP  /  {minimum}—{maximum}",
-            bg=self.PANEL, fg="#4f607b", font=("Segoe UI", 8)
+            bg=self.PANEL, fg="#4f607b", font=("Consolas", 8)
         ).pack(side="right")
 
     def _step_value(self, variable, amount, minimum, maximum, callback):
@@ -786,7 +728,7 @@ class DemoApp(tk.Tk):
 
     def _reset_chart_slots(self):
         for name in (
-            "_fuzzy_fig", "_fuzzy_ax", "_fuzzy_marker", "_fuzzy_glow_outer", "_fuzzy_glow_inner", "_fuzzy_canvas",
+            "_fuzzy_fig", "_fuzzy_ax", "_fuzzy_marker", "_fuzzy_canvas",
             "_rl_fig", "_rl_ax", "_rl_canvas",
             "_data_fig", "_data_ax", "_data_canvas",
         ):
@@ -816,8 +758,6 @@ class DemoApp(tk.Tk):
             self._build_fuzzy_figure(temp_value)
         try:
             self._fuzzy_marker.set_xdata([temp_value, temp_value])
-            self._fuzzy_glow_outer.set_xdata([temp_value, temp_value])
-            self._fuzzy_glow_inner.set_xdata([temp_value, temp_value])
             self._fuzzy_canvas.draw_idle()
         except Exception:
             pass
@@ -831,7 +771,7 @@ class DemoApp(tk.Tk):
 
         fig, ax = self._make_figure(10, 4.2)
 
-        import numpy as np
+        import numpy as np # type: ignore
 
         temps = np.linspace(10, 35, 500)
         gradient = np.zeros((40, 500, 3))
@@ -852,9 +792,10 @@ class DemoApp(tk.Tk):
             gradient, extent=[10, 35, 0, 1], aspect="auto",
             interpolation="bicubic", alpha=0.88
         )
-        glow_outer = ax.axvline(temp_value, color=self.ACCENT, linewidth=8, alpha=0.08)
-        glow_inner = ax.axvline(temp_value, color=self.ACCENT, linewidth=4, alpha=0.14)
-        marker = ax.axvline(temp_value, color="#ffffff", linestyle=":", linewidth=2.2, alpha=0.98)
+        marker = ax.axvline(
+            temp_value, color="#ffffff", linestyle=":",
+            linewidth=2.4, alpha=0.95
+        )
         ax.set_xlim(10, 35)
         ax.set_ylim(0, 1)
         ax.set_xticks([])
@@ -866,8 +807,6 @@ class DemoApp(tk.Tk):
         self._fuzzy_fig = fig
         self._fuzzy_ax = ax
         self._fuzzy_marker = marker
-        self._fuzzy_glow_outer = glow_outer
-        self._fuzzy_glow_inner = glow_inner
         self._fuzzy_canvas = self._embed_canvas(fig, self.fuzzy_chart)
 
     def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent):
