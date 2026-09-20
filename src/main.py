@@ -164,6 +164,7 @@ class DemoApp(tk.Tk):
         self._build_ui()
         self._bind_keyboard()
         self._refresh_all()
+        self._start_frame_animation()
 
     def _configure_styles(self):
         self.style.configure("Root.TFrame", background=self.BG)
@@ -598,6 +599,60 @@ class DemoApp(tk.Tk):
         self._ambient_phase += 1
         self._draw_ambient_frame()
         self._ambient_job = self.after(70, self._animate_ambient_frame)
+
+    def _create_frame_layer(self):
+        self._frame_canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0, bd=0)
+        self._frame_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        tk.Misc.lower(self._frame_canvas)
+        self._frame_canvas.bind("<Configure>", lambda _event: self._draw_frame_animation())
+
+    def _start_frame_animation(self):
+        self._stop_frame_animation()
+        self._frame_phase = 0
+        self._draw_frame_animation()
+        self._ambient_job = self.after(55, self._animate_frame)
+
+    def _stop_frame_animation(self):
+        if self._ambient_job is not None:
+            try:
+                self.after_cancel(self._ambient_job)
+            except Exception:
+                pass
+            self._ambient_job = None
+
+    def _draw_frame_animation(self):
+        if self._frame_canvas is None:
+            return
+        c = self._frame_canvas
+        c.delete("all")
+        w = max(c.winfo_width(), 1)
+        h = max(c.winfo_height(), 1)
+        inset = 9
+        px = inset + ((self._frame_phase * 1.0) % max(w - inset * 2, 1))
+        py = inset + ((self._frame_phase * 0.58) % max(h - inset * 2, 1))
+        c.create_line(px, inset, min(px + 70, w - inset), inset, fill=self.BORDER, width=2)
+        c.create_line(w - inset, py, w - inset, min(py + 55, h - inset), fill=self.BORDER, width=2)
+        ax = inset + ((self._frame_phase * 0.72 + w * 0.42) % max(w - inset * 2, 1))
+        c.create_line(ax, h - inset, min(ax + 30, w - inset), h - inset, fill=self.ACCENT, width=2)
+        corner = 20
+        for x1, y1, x2, y2 in (
+            (inset, inset, inset + corner, inset),
+            (inset, inset, inset, inset + corner),
+            (w - inset - corner, inset, w - inset, inset),
+            (w - inset, inset, w - inset, inset + corner),
+            (inset, h - inset, inset + corner, h - inset),
+            (inset, h - inset - corner, inset, h - inset),
+            (w - inset - corner, h - inset, w - inset, h - inset),
+            (w - inset, h - inset - corner, w - inset, h - inset),
+        ):
+            c.create_line(x1, y1, x2, y2, fill=self.BORDER, width=1)
+
+    def _animate_frame(self):
+        if not self.winfo_exists():
+            return
+        self._frame_phase += 1
+        self._draw_frame_animation()
+        self._ambient_job = self.after(55, self._animate_frame)
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
