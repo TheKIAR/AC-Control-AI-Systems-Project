@@ -31,3 +31,6 @@ models/*.pkl
 models/*.pt
 models/*.bin
 install.log
+
+*.egg-info/
+
