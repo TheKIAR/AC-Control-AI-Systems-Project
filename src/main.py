@@ -83,33 +83,33 @@ def run_demo(temp_value=22, rl_episodes=5, data_points=5, data_method="supervise
 
 
 class DemoApp(tk.Tk):
-    BG = "#111827"
-    PANEL = "#1f2937"
-    CARD = "#243244"
-    CARD_2 = "#2d3a4d"
-    BORDER = "#3b4758"
-    TEXT = "#f3f4f6"
-    MUTED = "#a6afbd"
-    ACCENT = "#60a5fa"
-    ACCENT_2 = "#a78bfa"
-    GREEN = "#34d399"
-    RED = "#f87171"
-    BLUE = "#60a5fa"
+    BG = "#15171c"
+    PANEL = "#1e2229"
+    CARD = "#252a32"
+    CARD_2 = "#2c313a"
+    BORDER = "#414751"
+    TEXT = "#f4f5f7"
+    MUTED = "#a7adb8"
+    ACCENT = "#4f8cff"
+    ACCENT_2 = "#4f8cff"
+    GREEN = "#45c486"
+    RED = "#ef6b73"
+    BLUE = "#4f8cff"
 
     THEMES = {
         "dark": {
-            "BG": "#111827",
-            "PANEL": "#1f2937",
-            "CARD": "#243244",
-            "CARD_2": "#2d3a4d",
-            "BORDER": "#3b4758",
-            "TEXT": "#f3f4f6",
-            "MUTED": "#a6afbd",
-            "ACCENT": "#60a5fa",
-            "ACCENT_2": "#a78bfa",
-            "GREEN": "#34d399",
-            "RED": "#f87171",
-            "BLUE": "#60a5fa",
+            "BG": "#15171c",
+            "PANEL": "#1e2229",
+            "CARD": "#252a32",
+            "CARD_2": "#2c313a",
+            "BORDER": "#414751",
+            "TEXT": "#f4f5f7",
+            "MUTED": "#a7adb8",
+            "ACCENT": "#4f8cff",
+            "ACCENT_2": "#4f8cff",
+            "GREEN": "#45c486",
+            "RED": "#ef6b73",
+            "BLUE": "#4f8cff",
         },
         "light": {
             "BG": "#e9eef5",
@@ -164,6 +164,7 @@ class DemoApp(tk.Tk):
         self._build_ui()
         self._bind_keyboard()
         self._refresh_all()
+        self._frame_canvas.lift()
         self._start_frame_animation()
 
     def _configure_styles(self):
@@ -172,7 +173,7 @@ class DemoApp(tk.Tk):
         self.style.configure("Card.TFrame", background=self.CARD)
         self.style.configure(
             "Title.TLabel", background=self.BG, foreground=self.TEXT,
-            font=("Segoe UI", 24, "bold")
+            font=("Segoe UI", 21, "bold")
         )
         self.style.configure(
             "Subtitle.TLabel", background=self.BG, foreground=self.MUTED,
@@ -311,10 +312,10 @@ class DemoApp(tk.Tk):
 
         title_frame = ttk.Frame(header, style="Root.TFrame")
         title_frame.pack(side="left")
-        ttk.Label(title_frame, text="AI CONTROL", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(title_frame, text="AI Control", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             title_frame,
-            text="Fuzzy Logic  •  Reinforcement Learning  •  Data Processing",
+            text="Fuzzy logic, reinforcement learning and data processing",
             style="Subtitle.TLabel",
         ).pack(anchor="w", pady=(3, 0))
 
@@ -452,10 +453,18 @@ class DemoApp(tk.Tk):
         self._reset_chart_slots()
 
     def _create_frame_animation(self):
-        self._frame_canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0, bd=0)
+        # A single visible border sweep: modern, clean, and intentionally prominent.
+        self._frame_canvas = tk.Canvas(
+            self, bg=self.BG, highlightthickness=0, bd=0
+        )
         self._frame_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
-        tk.Misc.lower(self._frame_canvas)
+        self._frame_canvas.lift()
         self._frame_phase = 0
+        self.bind("<Configure>", self._resize_frame_animation, add="+")
+
+    def _resize_frame_animation(self, _event=None):
+        if getattr(self, "_frame_canvas", None) is not None:
+            self._animate_frame()
 
     def _start_frame_animation(self):
         if getattr(self, "_frame_job", None):
@@ -470,33 +479,50 @@ class DemoApp(tk.Tk):
         if not self.winfo_exists():
             return
         c = self._frame_canvas
+        w = max(c.winfo_width(), 2)
+        h = max(c.winfo_height(), 2)
         c.delete("all")
-        w = max(c.winfo_width(), 1)
-        h = max(c.winfo_height(), 1)
-        inset = 5
-        perimeter = 2 * (w - 2 * inset) + 2 * (h - 2 * inset)
-        distance = (self._frame_phase * 8) % perimeter
 
-        # One large, bright segment continuously travels around the entire window.
-        if distance < w - 2 * inset:
-            x = inset + distance
-            c.create_line(x, inset, min(x + 150, w - inset), inset,
-                          fill=self.ACCENT, width=5, capstyle="round")
-        elif distance < w - 2 * inset + h - 2 * inset:
-            y = inset + distance - (w - 2 * inset)
-            c.create_line(w - inset, y, w - inset, min(y + 150, h - inset),
-                          fill=self.ACCENT, width=5, capstyle="round")
-        elif distance < 2 * (w - 2 * inset) + h - 2 * inset:
-            x = w - inset - (distance - (w - 2 * inset + h - 2 * inset))
-            c.create_line(max(inset, x - 150), h - inset, x, h - inset,
-                          fill=self.ACCENT, width=5, capstyle="round")
-        else:
-            y = h - inset - (distance - (2 * (w - 2 * inset) + h - 2 * inset))
-            c.create_line(inset, max(inset, y - 150), inset, y,
-                          fill=self.ACCENT, width=5, capstyle="round")
+        # Static thin border + one clearly moving segment.
+        inset = 3
+        c.create_rectangle(
+            inset, inset, w - inset, h - inset,
+            outline="#414751", width=2
+        )
+
+        perimeter = 2 * (w - 2 * inset) + 2 * (h - 2 * inset)
+        distance = (self._frame_phase * 12) % perimeter
+        segment = 230
+
+        def point_at(d):
+            top = w - 2 * inset
+            side = h - 2 * inset
+            if d < top:
+                return inset + d, inset
+            d -= top
+            if d < side:
+                return w - inset, inset + d
+            d -= side
+            if d < top:
+                return w - inset - d, h - inset
+            d -= top
+            return inset, h - inset - d
+
+        # Draw the moving segment as short connected pieces so corners are smooth.
+        pieces = 14
+        points = []
+        for i in range(pieces + 1):
+            points.append(point_at((distance + segment * i / pieces) % perimeter))
+        for i in range(pieces):
+            x1, y1 = points[i]
+            x2, y2 = points[i + 1]
+            c.create_line(
+                x1, y1, x2, y2,
+                fill="#4f8cff", width=7, capstyle="round"
+            )
 
         self._frame_phase += 1
-        self._frame_job = self.after(28, self._animate_frame)
+        self._frame_job = self.after(32, self._animate_frame)
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
