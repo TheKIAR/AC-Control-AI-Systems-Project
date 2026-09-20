@@ -89,30 +89,11 @@ def generate_visual_outputs(output_dir="outputs", temperature=22, rl_episodes=5,
     except Exception:
         pass
 
-    rewards = []
     env = RLEnvironment()
     agent = RLAgent(action_space=[0, 1])
     trainer = RLTrainer(agent, env)
-    for episode in range(1, rl_episodes + 1):
-        state = env.reset()
-        done = False
-        total_reward = 0
-        steps = 0
-        while not done and steps < 100:  # step cap: agent can get stuck
-            action = agent.choose_action(state, exploration_rate=0.1)
-            result = env.step(action)
-            if len(result) == 2:
-                reward, next_state = result
-                done = env.is_terminal_state(next_state)
-            else:
-                next_state, reward, done = result
-            agent.learn(state, action, reward, next_state)
-            state = next_state
-            total_reward += reward
-            steps += 1
-        rewards.append(total_reward)
-
-    rewards = [round(float(r), 2) for r in rewards]
+    trainer.train(episodes=rl_episodes, max_steps=100)
+    rewards = trainer.rewards
 
     fig = Figure(figsize=(6.5, 4), dpi=120)
     ax = fig.add_subplot(111)
@@ -194,11 +175,6 @@ def run_demo(temp_value=22, rl_episodes=5, data_points=5, data_method="supervise
     fuzzy_system = FuzzySystem()
     fuzzy_system.set_temperature(temp_value)
     fuzzy_result = fuzzy_system.evaluate(temp_value)
-
-    rl_environment = RLEnvironment()
-    rl_agent = RLAgent(action_space=[0, 1])
-    rl_trainer = RLTrainer(rl_agent, rl_environment)
-    rl_trainer.train(episodes=rl_episodes)
 
     datagen = DataGenerator(method=data_method)
     raw_data = datagen.generate_data(num_samples=data_points)
