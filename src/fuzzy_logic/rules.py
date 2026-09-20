@@ -1,12 +1,18 @@
+from .fuzzy_system import COLD_MAX, COMFORT_MAX
+
+
 def create_fuzzy_rule(name, conditions, output):
     return {"name": name, "conditions": conditions, "output": output}
 
 
 def create_rules():
+    # Same 20/24 borders as FuzzySystem and fopl/advisor.py.
+    # "warm" covers FOPL Warm (24-28) + Hot (>=28): both need cooling,
+    # which FOPL refines into AC_ECO vs AC_HIGH.
     return [
-        create_fuzzy_rule("cold", [lambda value: value < 20], "Increase Temperature"),
-        create_fuzzy_rule("warm", [lambda value: value > 24], "Decrease Temperature"),
-        create_fuzzy_rule("stable", [lambda value: 20 <= value <= 24], "Maintain Temperature"),
+        create_fuzzy_rule("cold", [lambda value: value < COLD_MAX], "Increase Temperature"),
+        create_fuzzy_rule("warm", [lambda value: value > COMFORT_MAX], "Decrease Temperature"),
+        create_fuzzy_rule("stable", [lambda value: COLD_MAX <= value <= COMFORT_MAX], "Maintain Temperature"),
     ]
 
 

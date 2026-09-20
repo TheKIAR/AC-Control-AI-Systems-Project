@@ -55,6 +55,129 @@ def normalize_values(items):
     return values or [0.0]
 
 
+def generate_visual_outputs(output_dir="outputs", temperature=22, rl_episodes=5,
+                            data_points=5, data_method="supervised"):
+    """Run all modules headlessly and save PNG + text evidence to output_dir.
+
+    Produces fuzzy_system.png, reinforcement_learning.png, data_pipeline.png,
+    summary.txt and logic_inference.txt. Used by tests/test_visuals.py and
+    anywhere file output is needed without opening the GUI.
+    """
+    if not FIGURE_AVAILABLE:
+        raise RuntimeError("matplotlib is required to generate visual outputs.")
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    result = run_demo(temperature, rl_episodes, data_points, data_method)
+
+    # 1. Fuzzy decision levels across a temperature sweep.
+    fuzzy_system = FuzzySystem()
+    temperatures = [16, 18, 20, 22, 24, 26, 28, 30]
+    decision_map = {
+        "Increase Temperature": 1,
+        "Maintain Temperature": 2,
+        "Decrease Temperature": 3,
+    }
+    fuzzy_values = [decision_map[fuzzy_system.evaluate(t)] for t in temperatures]
+    fig = Figure(figsize=(10, 4.2), dpi=100)
+    ax = fig.add_subplot(111)
+    colors = ["#2ecc71" if v == 1 else "#f39c12" if v == 2 else "#e74c3c"
+              for v in fuzzy_values]
+    ax.bar(temperatures, fuzzy_values, color=colors)
+    ax.axvline(temperature, color="#000000", linestyle="--", linewidth=1.5)
+    ax.set_xlabel("Temperature (C)")
+    ax.set_ylabel("Decision level")
+    ax.set_title("Fuzzy Logic Temperature Control")
+    ax.set_yticks([1, 2, 3])
+    ax.set_yticklabels(["Increase", "Maintain", "Decrease"])
+    fig.tight_layout()
+    fuzzy_file = output_path / "fuzzy_system.png"
+    fig.savefig(fuzzy_file)
+
+    # 2. RL reward curve.
+    rewards = result.get("rl_rewards", []) or [0.0]
+    fig = Figure(figsize=(10, 4.2), dpi=100)
+    ax = fig.add_subplot(111)
+    ax.plot(list(range(1, len(rewards) + 1)), rewards, marker="o", linewidth=2.2)
+    ax.set_xlabel("Episode")
+    ax.set_ylabel("Reward")
+    ax.set_title("Reinforcement Learning Rewards")
+    ax.grid(True, linestyle="--", alpha=0.4)
+    fig.tight_layout()
+    rl_file = output_path / "reinforcement_learning.png"
+    fig.savefig(rl_file)
+
+    # 3. Data pipeline output.
+    y_values = normalize_values(result.get("processed_data", []))
+    x_values = list(range(len(y_values)))
+    fig = Figure(figsize=(10, 4.2), dpi=100)
+    ax = fig.add_subplot(111)
+    ax.plot(x_values, y_values, marker="o", linewidth=2.2)
+    ax.set_xlabel("Sample index")
+    ax.set_ylabel("Transformed value")
+    ax.set_title("Data Pipeline Output")
+    ax.grid(True, linestyle="--", alpha=0.4)
+    fig.tight_layout()
+    data_file = output_path / "data_pipeline.png"
+    fig.savefig(data_file)
+
+    # 4. Text summary with pipeline stats.
+    lo = min(y_values)
+    hi = max(y_values)
+    mean_val = sum(y_values) / len(y_values)
+    summary_file = output_path / "summary.txt"
+    summary_file.write_text(
+        "AI Systems Project Summary\n"
+        "========================\n"
+        f"Fuzzy result: {result['fuzzy_result']}\n"
+        f"RL episodes: {rl_episodes}\n"
+        f"Data points: {data_points}\n"
+        f"Data method: {data_method}\n"
+        f"Pipeline min: {lo:.2f}, max: {hi:.2f}, mean: {mean_val:.2f}\n",
+        encoding="utf-8",
+    )
+
+    # 5. FOPL advisor trace (P2 evidence).
+    try:
+        try:
+            from fopl.advisor import build_advisor
+        except ImportError:
+            from src.fopl.advisor import build_advisor
+        advisor = build_advisor(temperature, occupied=True)
+        lines = [
+            "Smart-Room FOPL Advisor",
+            "=======================",
+            f"Input: {float(temperature):.1f}C ({advisor['band']}), "
+            "occupied=True, night=False, energy_saver=False",
+            "",
+            "Facts:",
+            *[f"  {f}" for f in advisor["facts"]],
+            "",
+            "Conclusions:",
+            *[f"  {c}" for c in advisor["conclusions"]],
+            "",
+            "Fired rules:",
+            *[f"  {line}" for line in advisor["fired"]],
+        ]
+        logic_file = output_path / "logic_inference.txt"
+        logic_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except Exception:
+        logic_file = None
+
+    out = {
+        "fuzzy": fuzzy_file,
+        "rl": rl_file,
+        "data": data_file,
+        "summary": summary_file,
+        "fuzzy_decision": result["fuzzy_result"],
+        "rl_rewards": result["rl_rewards"],
+        "processed_data": result["processed_data"],
+    }
+    if logic_file is not None:
+        out["logic"] = logic_file
+    return out
+
+
 def run_demo(temp_value=22, rl_episodes=5, data_points=5, data_method="supervised"):
     fuzzy_system = FuzzySystem()
     fuzzy_system.set_temperature(temp_value)
@@ -96,6 +219,37 @@ class DemoApp(tk.Tk):
     RED = "#ff5577"
     BLUE = "#4aa8ff"
 
+    THEMES = {
+        "dark": {
+            "BG": "#070b14",
+            "PANEL": "#0d1320",
+            "CARD": "#111a29",
+            "CARD_2": "#151f31",
+            "BORDER": "#24344d",
+            "TEXT": "#e8eef8",
+            "MUTED": "#8290a8",
+            "ACCENT": "#6ee7ff",
+            "ACCENT_2": "#9b8cff",
+            "GREEN": "#39e6a3",
+            "RED": "#ff5577",
+            "BLUE": "#4aa8ff",
+        },
+        "light": {
+            "BG": "#e9eef5",
+            "PANEL": "#ffffff",
+            "CARD": "#ffffff",
+            "CARD_2": "#eef3f9",
+            "BORDER": "#c3cfdf",
+            "TEXT": "#0f1c30",
+            "MUTED": "#5b6b84",
+            "ACCENT": "#0284c7",
+            "ACCENT_2": "#7c3aed",
+            "GREEN": "#059669",
+            "RED": "#dc2626",
+            "BLUE": "#2563eb",
+        },
+    }
+
     def __init__(self):
         if not TK_AVAILABLE or not FIGURE_AVAILABLE:
             raise RuntimeError(
@@ -103,8 +257,9 @@ class DemoApp(tk.Tk):
             )
 
         super().__init__()
+        self.theme = "dark"
         self.title("AI CONTROL // FUTURE SYSTEMS")
-        self.geometry("1220x900")
+        self.geometry("1240x1000")
         self.minsize(980, 760)
         self.configure(bg=self.BG)
         self.resizable(True, True)
@@ -220,13 +375,61 @@ class DemoApp(tk.Tk):
             lightcolor=self.ACCENT,
             darkcolor=self.ACCENT,
         )
+        self.style.configure(
+            "Vertical.TScrollbar",
+            background=self.CARD_2,
+            troughcolor=self.BG,
+            bordercolor=self.BORDER,
+            arrowcolor=self.MUTED,
+        )
+
+    def _apply_theme_colors(self):
+        for key, value in self.THEMES[self.theme].items():
+            setattr(self, key, value)
+        self.configure(bg=self.BG)
+
+    def toggle_theme(self):
+        self.theme = "light" if self.theme == "dark" else "dark"
+        self._apply_theme_colors()
+        self.style.theme_use("clam")
+        self._configure_styles()
+        for child in self.winfo_children():
+            child.destroy()
+        self._build_ui()
+        self._refresh_all()
+
+    def _on_mousewheel(self, event):
+        try:
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        except Exception:
+            pass
 
     def _build_ui(self):
-        root = ttk.Frame(self, padding=22, style="Root.TFrame")
-        root.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
 
-        header = ttk.Frame(root, style="Root.TFrame")
-        header.pack(fill="x", pady=(2, 18))
+        body = ttk.Frame(self.canvas, padding=(22, 10, 22, 22), style="Root.TFrame")
+        self.canvas_window = self.canvas.create_window((0, 0), window=body, anchor="nw")
+        body.bind(
+            "<Configure>",
+            lambda event: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
+        )
+        # Keep the content full-width at any window size. Without this the
+        # inner frame keeps its narrow width when maximized/fullscreen and
+        # everything looks shifted to the middle.
+        self.canvas.bind(
+            "<Configure>",
+            lambda event: self.canvas.itemconfig(self.canvas_window, width=event.width),
+        )
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        # Sticky top bar: title + theme toggle + status stay visible while
+        # the controls and charts scroll underneath.
+        header = ttk.Frame(self, padding=(22, 14, 22, 10), style="Root.TFrame")
+        header.pack(side="top", fill="x", before=self.canvas)
 
         title_frame = ttk.Frame(header, style="Root.TFrame")
         title_frame.pack(side="left")
@@ -259,8 +462,16 @@ class DemoApp(tk.Tk):
             font=("Consolas", 9, "bold"),
         ).pack(side="left", padx=(0, 10), pady=8)
 
+        self.theme_button = ttk.Button(
+            header,
+            text="🌙  DARK" if self.theme == "light" else "☀  LIGHT",
+            command=self.toggle_theme,
+            style="Action.TButton",
+        )
+        self.theme_button.pack(side="right", padx=(0, 4))
+
         controls = tk.Frame(
-            root,
+            body,
             bg=self.PANEL,
             highlightbackground=self.BORDER,
             highlightthickness=1,
@@ -331,7 +542,7 @@ class DemoApp(tk.Tk):
             font=("Consolas", 10, "bold"),
         ).pack(side="right")
 
-        output_title = tk.Frame(root, bg=self.BG)
+        output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
         tk.Label(
             output_title,
@@ -348,24 +559,22 @@ class DemoApp(tk.Tk):
             font=("Consolas", 8, "bold"),
         ).pack(side="right")
 
-        self.output_grid = tk.Frame(root, bg=self.BG)
+        self.output_grid = tk.Frame(body, bg=self.BG)
         self.output_grid.pack(fill="both", expand=True)
-        self.output_grid.grid_columnconfigure(0, weight=1, uniform="charts")
-        self.output_grid.grid_columnconfigure(1, weight=1, uniform="charts")
+        self.output_grid.grid_columnconfigure(0, weight=1)
         self.output_grid.grid_rowconfigure(0, weight=1)
         self.output_grid.grid_rowconfigure(1, weight=1)
+        self.output_grid.grid_rowconfigure(2, weight=1)
 
         self.fuzzy_card = self._create_output_card(
-            0, 0, "01  FUZZY TEMPERATURE FIELD", "LIVE MEMBERSHIP"
+            0, 0, "01  FUZZY TEMPERATURE FIELD", "LIVE MEMBERSHIP", self.BLUE
         )
         self.rl_card = self._create_output_card(
-            0, 1, "02  REINFORCEMENT LEARNING", "REWARD TRACE"
+            1, 0, "02  REINFORCEMENT LEARNING", "REWARD TRACE", self.ACCENT_2
         )
         self.data_card = self._create_output_card(
-            1, 0, "03  DATA PIPELINE", "TRANSFORMED DATA"
+            2, 0, "03  DATA PIPELINE", "TRANSFORMED DATA", self.GREEN
         )
-
-        self.data_card.grid_configure(columnspan=2, padx=(0, 0))
 
         self.fuzzy_chart = self._chart_host(self.fuzzy_card)
         self.rl_chart = self._chart_host(self.rl_card)
@@ -389,7 +598,10 @@ class DemoApp(tk.Tk):
         value_label.pack(side="right")
 
         def update_value(*_):
-            value_label.config(text=f"{int(variable.get())}{suffix}")
+            try:
+                value_label.config(text=f"{int(variable.get())}{suffix}")
+            except tk.TclError:
+                pass  # label belonged to a pre-theme-toggle layout
 
         update_value()
         variable.trace_add("write", update_value)
@@ -432,18 +644,16 @@ class DemoApp(tk.Tk):
         variable.set(value)
         callback()
 
-    def _create_output_card(self, row, column, title, subtitle):
+    def _create_output_card(self, row, column, title, subtitle, accent=None):
         card = tk.Frame(
             self.output_grid,
             bg=self.CARD,
             highlightbackground=self.BORDER,
             highlightthickness=1,
         )
-        card.grid(
-            row=row, column=column, sticky="nsew",
-            padx=(0, 10) if column == 0 else (10, 0),
-            pady=(0, 10),
-        )
+        card.grid(row=row, column=column, sticky="nsew", pady=(0, 12))
+        if accent is not None:
+            tk.Frame(card, bg=accent, height=3).pack(fill="x")
         header = tk.Frame(card, bg=self.CARD)
         header.pack(fill="x", padx=14, pady=(12, 6))
         tk.Label(
@@ -461,7 +671,7 @@ class DemoApp(tk.Tk):
         host.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         return host
 
-    def _make_dark_figure(self, width=6, height=3):
+    def _make_figure(self, width=10, height=4.2):
         fig = Figure(figsize=(width, height), dpi=100, facecolor=self.CARD)
         ax = fig.add_subplot(111)
         ax.set_facecolor(self.CARD)
@@ -471,7 +681,7 @@ class DemoApp(tk.Tk):
         for child in self.fuzzy_chart.winfo_children():
             child.destroy()
 
-        fig, ax = self._make_dark_figure(6.2, 3.5)
+        fig, ax = self._make_figure(10, 4.2)
 
         import numpy as np
 
@@ -525,7 +735,7 @@ class DemoApp(tk.Tk):
         for child in parent.winfo_children():
             child.destroy()
 
-        fig, ax = self._make_dark_figure(6.2, 3.5)
+        fig, ax = self._make_figure(10, 4.2)
         ax.plot(
             x_values, y_values,
             color=accent,
@@ -538,7 +748,7 @@ class DemoApp(tk.Tk):
         ax.set_xlabel(x_label, color=self.MUTED, fontsize=8)
         ax.set_ylabel(y_label, color=self.MUTED, fontsize=8)
         ax.tick_params(colors=self.MUTED, labelsize=8)
-        ax.grid(True, color="#24344d", alpha=0.65, linestyle="--", linewidth=0.6)
+        ax.grid(True, color=self.BORDER, alpha=0.65, linestyle="--", linewidth=0.6)
         for spine in ax.spines.values():
             spine.set_color(self.BORDER)
         fig.tight_layout(pad=1.2)

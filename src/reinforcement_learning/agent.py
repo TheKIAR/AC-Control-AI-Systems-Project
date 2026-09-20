@@ -5,19 +5,24 @@ class RLAgent:
     def __init__(self, action_space=None):
         self.action_space = [0, 1] if action_space is None else list(action_space)
         self.q_table = {}
-        self.q_values = self.q_table
+
+    @property
+    def q_values(self):
+        # Kept for backward compatibility; the Q-table is the single source.
+        return self.q_table
 
     def choose_action(self, state, exploration_rate=0.0):
         state_key = tuple(state) if isinstance(state, list) else state
         if state_key not in self.q_table:
-            self.q_table[state_key] = [0] * len(self.action_space)
+            self.q_table[state_key] = [0.0] * len(self.action_space)
 
-        q_values = self.q_table[state_key]
+        q_vals = self.q_table[state_key]
         if random.random() < exploration_rate:
             return random.choice(self.action_space)  # Explore
-        if len(set(q_values)) == 1:
+        if len(set(q_vals)) == 1:
             return random.choice(self.action_space)
-        return q_values.index(max(q_values))  # Exploit
+        # Return the action itself, not its table index.
+        return self.action_space[q_vals.index(max(q_vals))]  # Exploit
 
     def learn(self, state, action, reward, next_state, learning_rate=0.2, discount_factor=0.5):
         state_key = tuple(state) if isinstance(state, list) else state
@@ -34,6 +39,5 @@ class RLAgent:
         td_delta = td_target - self.q_table[state_key][action_index]
         updated_value = self.q_table[state_key][action_index] + learning_rate * td_delta
         self.q_table[state_key][action_index] = max(-2.0, min(2.0, updated_value))
-        self.q_values = self.q_table
 
         return self.q_table[state_key][action_index]

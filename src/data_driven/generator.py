@@ -23,7 +23,19 @@ class DataGenerator:
         return [item for item in raw_data if item is not None]
 
     def transform_data(self, raw_data):
-        return [item ** 2 if isinstance(item, (int, float)) else item for item in raw_data]
+        return [self._square_item(item) for item in raw_data]
+
+    @staticmethod
+    def _square_item(item):
+        if isinstance(item, bool):
+            return item
+        if isinstance(item, (int, float)):
+            return item ** 2
+        if isinstance(item, list):
+            return [DataGenerator._square_item(x) for x in item]
+        if isinstance(item, tuple):
+            return tuple(DataGenerator._square_item(x) for x in item)
+        return item
 
     def save_data(self, data, filename):
         path = Path(filename)

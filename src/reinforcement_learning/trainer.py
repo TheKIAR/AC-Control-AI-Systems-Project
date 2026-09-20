@@ -16,15 +16,9 @@ class RLTrainer:
 
             while not done and steps < max_steps:
                 action = self.agent.choose_action(state, exploration_rate=0.1)
-                result = self.environment.step(action)
-
-                if len(result) == 2:
-                    reward, next_state = result
-                    done = self.environment.is_terminal_state(next_state)
-                elif len(result) == 3:
-                    next_state, reward, done = result
-                else:
-                    next_state, reward, done, _ = result
+                # RLEnvironment.step returns (reward, next_state).
+                reward, next_state = self.environment.step(action)
+                done = self.environment.is_terminal_state(next_state)
 
                 self.agent.learn(state, action, reward, next_state)
                 state = next_state
@@ -49,15 +43,9 @@ class RLTrainer:
 
             while not done and steps < max_steps:
                 action = self.agent.choose_action(state, exploration_rate=0.0)
-                result = self.environment.step(action)
-
-                if len(result) == 2:
-                    reward, next_state = result
-                    done = self.environment.is_terminal_state(next_state)
-                elif len(result) == 3:
-                    next_state, reward, done = result
-                else:
-                    next_state, reward, done, _ = result
+                # RLEnvironment.step returns (reward, next_state).
+                reward, next_state = self.environment.step(action)
+                done = self.environment.is_terminal_state(next_state)
 
                 state = next_state
                 total_rewards += float(reward)
