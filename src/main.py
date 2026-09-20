@@ -163,7 +163,6 @@ class DemoApp(tk.Tk):
 
         self._build_ui()
         self._bind_keyboard()
-        self._start_ambient_animation()
         self._refresh_all()
 
     def _configure_styles(self):
@@ -259,7 +258,6 @@ class DemoApp(tk.Tk):
             child.destroy()
         self._build_ui()
         self._bind_keyboard()
-        self._start_ambient_animation()
         self._refresh_all()
 
     def _bind_keyboard(self):
@@ -286,8 +284,6 @@ class DemoApp(tk.Tk):
             pass
 
     def _build_ui(self):
-        self._create_ambient_layer()
-
         self.canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
