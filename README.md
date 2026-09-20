@@ -69,7 +69,7 @@ AI-Systems-Project/
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.11+
 - Tkinter for the desktop GUI
 - Dependencies listed in `requirements.txt`
 
