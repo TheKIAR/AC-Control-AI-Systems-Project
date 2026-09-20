@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from setuptools import find_packages, setup
+from setuptools import find_packages, setup # type: ignore
 
 BASE_DIR = Path(__file__).resolve().parent
 REQUIREMENTS = [
@@ -12,8 +12,8 @@ REQUIREMENTS = [
 setup(
     name='ai-systems-project',
     version='0.1.0',
-    author='Your Name',
-    author_email='your.email@example.com',
+    author='Md. Ragib Ashhab',
+    author_email='ragibashhab2733@gmail.com',
     description='A project implementing fuzzy logic, reinforcement learning, and data-driven AI systems.',
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
