@@ -135,7 +135,7 @@ class DemoApp(tk.Tk):
 
         super().__init__()
         self.theme = "dark"
-        self.title("AI CONTROL // FUTURE SYSTEMS")
+        self.title("AI Control System")
         self.geometry("1240x1000")
         self.minsize(980, 760)
         self.configure(bg=self.BG)
@@ -315,7 +315,7 @@ class DemoApp(tk.Tk):
         ttk.Label(title_frame, text="AI CONTROL", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             title_frame,
-            text="FUZZY LOGIC  /  REINFORCEMENT LEARNING  /  DATA PIPELINE",
+            text="Fuzzy Logic  •  Reinforcement Learning  •  Data Processing",
             style="Subtitle.TLabel",
         ).pack(anchor="w", pady=(3, 0))
 
@@ -349,13 +349,13 @@ class DemoApp(tk.Tk):
         controls.pack(fill="x", pady=(0, 18))
 
         tk.Label(
-            controls, text="CONTROL MATRIX", bg=self.PANEL, fg=self.TEXT,
+            controls, text="Controls", bg=self.PANEL, fg=self.TEXT,
             font=("Consolas", 11, "bold")
         ).pack(anchor="w", padx=18, pady=(15, 4))
 
         tk.Label(
             controls,
-            text="Adjust a parameter and the corresponding AI visualization updates immediately.",
+            text="Change the values below to update the results.",
             bg=self.PANEL, fg=self.MUTED, font=("Segoe UI", 9)
         ).pack(anchor="w", padx=18, pady=(0, 14))
 
@@ -389,11 +389,11 @@ class DemoApp(tk.Tk):
         action_row = tk.Frame(controls, bg=self.PANEL)
         action_row.pack(fill="x", padx=18, pady=(0, 16))
         ttk.Button(
-            action_row, text="↻  RUN FULL SYSTEM", command=self.run_demo,
+            action_row, text="Run System", command=self.run_demo,
             style="Accent.TButton"
         ).pack(side="left")
         ttk.Button(
-            action_row, text="RESET", command=self.reset_controls,
+            action_row, text="Reset", command=self.reset_controls,
             style="Action.TButton"
         ).pack(side="left", padx=(10, 0))
         tk.Label(
@@ -405,13 +405,13 @@ class DemoApp(tk.Tk):
         preset_row = tk.Frame(controls, bg=self.PANEL)
         preset_row.pack(fill="x", padx=18, pady=(0, 16))
         tk.Label(
-            preset_row, text="QUICK PRESETS", bg=self.PANEL, fg=self.MUTED,
+            preset_row, text="Presets", bg=self.PANEL, fg=self.MUTED,
             font=("Consolas", 9, "bold")
         ).pack(side="left")
         for text, temp in (
-            ("❄  COLD 16°", 16),
-            ("◉  NORMAL 22°", 22),
-            ("🔥  HOT 30°", 30),
+            ("Cold 16°C", 16),
+            ("Normal 22°C", 22),
+            ("Hot 30°C", 30),
         ):
             ttk.Button(
                 preset_row, text=text, width=14,
@@ -433,36 +433,35 @@ class DemoApp(tk.Tk):
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
         tk.Label(
-            output_title, text="LIVE OUTPUTS", bg=self.BG, fg=self.TEXT,
+            output_title, text="Results", bg=self.BG, fg=self.TEXT,
             font=("Consolas", 12, "bold")
         ).pack(side="left")
         tk.Label(
-            output_title, text="3 ACTIVE MODULES", bg=self.BG, fg=self.MUTED,
+            output_title, text="Live", bg=self.BG, fg=self.MUTED,
             font=("Consolas", 8, "bold")
         ).pack(side="right")
 
         self.output_grid = tk.Frame(body, bg=self.BG)
         self.output_grid.pack(fill="both", expand=True)
         self.output_grid.grid_columnconfigure(0, weight=1)
-        for row in range(3):
-            self.output_grid.grid_rowconfigure(row, weight=1)
+        self.output_grid.grid_rowconfigure(0, weight=3)
+        self.output_grid.grid_rowconfigure(1, weight=1)
+        self.output_grid.grid_rowconfigure(2, weight=1)
 
         self.fuzzy_card = self._create_output_card(
-            0, 0, "01  FUZZY TEMPERATURE FIELD", "LIVE MEMBERSHIP", self.BLUE
+            0, 0, "Fuzzy Temperature", "Live", self.BLUE
         )
         self.rl_card = self._create_output_card(
-            1, 0, "02  REINFORCEMENT LEARNING", "REWARD TRACE", self.ACCENT_2
+            1, 0, "Reinforcement Learning", "Reward", self.ACCENT_2
         )
         self.data_card = self._create_output_card(
-            2, 0, "03  DATA PIPELINE", "TRANSFORMED DATA", self.GREEN
+            2, 0, "Data Processing", "Processed Data", self.GREEN
         )
 
         self.fuzzy_chart = self._chart_host(self.fuzzy_card)
         self.rl_chart = self._chart_host(self.rl_card)
         self.data_chart = self._chart_host(self.data_card)
         self._reset_chart_slots()
-        self._start_pulse()
-        self._build_module_strip(body)
 
     def _build_module_strip(self, parent):
         strip = tk.Frame(parent, bg=self.BG)
@@ -913,10 +912,10 @@ class DemoApp(tk.Tk):
             fuzzy_result = system.evaluate(temperature)
         self.telemetry_var.set(
             f"TEMP {int(self.temp_var.get()):02d}°C   │   "
-            f"FUZZY {fuzzy_result.upper():<22} │   "
-            f"RL {int(self.rl_var.get()):02d} EP   │   "
-            f"DATA {int(self.data_count_var.get()):02d}   │   "
-            f"{self.method_var.get().upper():<11} │   ● ONLINE"
+            f"Temperature: {int(self.temp_var.get())}°C   •   "
+            f"Fuzzy: {fuzzy_result.title()}   •   "
+            f"RL Episodes: {int(self.rl_var.get())}   •   "
+            f"Data Points: {int(self.data_count_var.get())}"
         )
 
     def _apply_preset_value(self, name, temperature):
@@ -931,7 +930,7 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
-        steps = max(3, min(10, abs(target - start)))
+        steps = max(8, min(24, abs(target - start) * 2))
         current = 0
 
         def step():
@@ -941,7 +940,7 @@ class DemoApp(tk.Tk):
             smooth = progress * progress * (3 - 2 * progress)
             self._draw_fuzzy(start + (target - start) * smooth)
             if current < steps:
-                self._animation_job = self.after(28, step)
+                self._animation_job = self.after(22, step)
             else:
                 self._draw_fuzzy(target)
                 self._animation_job = None
