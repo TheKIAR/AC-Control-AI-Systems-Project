@@ -55,129 +55,6 @@ def normalize_values(items):
     return values or [0.0]
 
 
-def generate_visual_outputs(output_dir="outputs", temperature=22, rl_episodes=5,
-                            data_points=5, data_method="supervised"):
-    """Run all modules headlessly and save PNG + text evidence to output_dir.
-
-    Produces fuzzy_system.png, reinforcement_learning.png, data_pipeline.png,
-    summary.txt and logic_inference.txt. Used by tests/test_visuals.py and
-    anywhere file output is needed without opening the GUI.
-    """
-    if not FIGURE_AVAILABLE:
-        raise RuntimeError("matplotlib is required to generate visual outputs.")
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    result = run_demo(temperature, rl_episodes, data_points, data_method)
-
-    # 1. Fuzzy decision levels across a temperature sweep.
-    fuzzy_system = FuzzySystem()
-    temperatures = [16, 18, 20, 22, 24, 26, 28, 30]
-    decision_map = {
-        "Increase Temperature": 1,
-        "Maintain Temperature": 2,
-        "Decrease Temperature": 3,
-    }
-    fuzzy_values = [decision_map[fuzzy_system.evaluate(t)] for t in temperatures]
-    fig = Figure(figsize=(10, 4.2), dpi=100)
-    ax = fig.add_subplot(111)
-    colors = ["#2ecc71" if v == 1 else "#f39c12" if v == 2 else "#e74c3c"
-              for v in fuzzy_values]
-    ax.bar(temperatures, fuzzy_values, color=colors)
-    ax.axvline(temperature, color="#000000", linestyle="--", linewidth=1.5)
-    ax.set_xlabel("Temperature (C)")
-    ax.set_ylabel("Decision level")
-    ax.set_title("Fuzzy Logic Temperature Control")
-    ax.set_yticks([1, 2, 3])
-    ax.set_yticklabels(["Increase", "Maintain", "Decrease"])
-    fig.tight_layout()
-    fuzzy_file = output_path / "fuzzy_system.png"
-    fig.savefig(fuzzy_file)
-
-    # 2. RL reward curve.
-    rewards = result.get("rl_rewards", []) or [0.0]
-    fig = Figure(figsize=(10, 4.2), dpi=100)
-    ax = fig.add_subplot(111)
-    ax.plot(list(range(1, len(rewards) + 1)), rewards, marker="o", linewidth=2.2)
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Reward")
-    ax.set_title("Reinforcement Learning Rewards")
-    ax.grid(True, linestyle="--", alpha=0.4)
-    fig.tight_layout()
-    rl_file = output_path / "reinforcement_learning.png"
-    fig.savefig(rl_file)
-
-    # 3. Data pipeline output.
-    y_values = normalize_values(result.get("processed_data", []))
-    x_values = list(range(len(y_values)))
-    fig = Figure(figsize=(10, 4.2), dpi=100)
-    ax = fig.add_subplot(111)
-    ax.plot(x_values, y_values, marker="o", linewidth=2.2)
-    ax.set_xlabel("Sample index")
-    ax.set_ylabel("Transformed value")
-    ax.set_title("Data Pipeline Output")
-    ax.grid(True, linestyle="--", alpha=0.4)
-    fig.tight_layout()
-    data_file = output_path / "data_pipeline.png"
-    fig.savefig(data_file)
-
-    # 4. Text summary with pipeline stats.
-    lo = min(y_values)
-    hi = max(y_values)
-    mean_val = sum(y_values) / len(y_values)
-    summary_file = output_path / "summary.txt"
-    summary_file.write_text(
-        "AI Systems Project Summary\n"
-        "========================\n"
-        f"Fuzzy result: {result['fuzzy_result']}\n"
-        f"RL episodes: {rl_episodes}\n"
-        f"Data points: {data_points}\n"
-        f"Data method: {data_method}\n"
-        f"Pipeline min: {lo:.2f}, max: {hi:.2f}, mean: {mean_val:.2f}\n",
-        encoding="utf-8",
-    )
-
-    # 5. FOPL advisor trace (P2 evidence).
-    try:
-        try:
-            from fopl.advisor import build_advisor
-        except ImportError:
-            from src.fopl.advisor import build_advisor
-        advisor = build_advisor(temperature, occupied=True)
-        lines = [
-            "Smart-Room FOPL Advisor",
-            "=======================",
-            f"Input: {float(temperature):.1f}C ({advisor['band']}), "
-            "occupied=True, night=False, energy_saver=False",
-            "",
-            "Facts:",
-            *[f"  {f}" for f in advisor["facts"]],
-            "",
-            "Conclusions:",
-            *[f"  {c}" for c in advisor["conclusions"]],
-            "",
-            "Fired rules:",
-            *[f"  {line}" for line in advisor["fired"]],
-        ]
-        logic_file = output_path / "logic_inference.txt"
-        logic_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    except Exception:
-        logic_file = None
-
-    out = {
-        "fuzzy": fuzzy_file,
-        "rl": rl_file,
-        "data": data_file,
-        "summary": summary_file,
-        "fuzzy_decision": result["fuzzy_result"],
-        "rl_rewards": result["rl_rewards"],
-        "processed_data": result["processed_data"],
-    }
-    if logic_file is not None:
-        out["logic"] = logic_file
-    return out
-
-
 def run_demo(temp_value=22, rl_episodes=5, data_points=5, data_method="supervised"):
     fuzzy_system = FuzzySystem()
     fuzzy_system.set_temperature(temp_value)
@@ -284,63 +161,38 @@ class DemoApp(tk.Tk):
         self._refresh_all()
 
     def _configure_styles(self):
+        self.style.configure("Root.TFrame", background=self.BG)
+        self.style.configure("Panel.TFrame", background=self.PANEL)
+        self.style.configure("Card.TFrame", background=self.CARD)
         self.style.configure(
-            "Root.TFrame",
-            background=self.BG,
+            "Title.TLabel", background=self.BG, foreground=self.TEXT,
+            font=("Segoe UI", 24, "bold")
         )
         self.style.configure(
-            "Panel.TFrame",
-            background=self.PANEL,
+            "Subtitle.TLabel", background=self.BG, foreground=self.MUTED,
+            font=("Segoe UI", 10)
         )
         self.style.configure(
-            "Card.TFrame",
-            background=self.CARD,
+            "Section.TLabel", background=self.PANEL, foreground=self.TEXT,
+            font=("Segoe UI", 11, "bold")
         )
         self.style.configure(
-            "Title.TLabel",
-            background=self.BG,
-            foreground=self.TEXT,
-            font=("Segoe UI", 24, "bold"),
+            "Control.TLabel", background=self.PANEL, foreground=self.MUTED,
+            font=("Segoe UI", 10)
         )
         self.style.configure(
-            "Subtitle.TLabel",
-            background=self.BG,
-            foreground=self.MUTED,
-            font=("Segoe UI", 10),
+            "Value.TLabel", background=self.PANEL, foreground=self.ACCENT,
+            font=("Consolas", 11, "bold")
         )
         self.style.configure(
-            "Section.TLabel",
-            background=self.PANEL,
-            foreground=self.TEXT,
-            font=("Segoe UI", 11, "bold"),
+            "Status.TLabel", background=self.PANEL, foreground=self.GREEN,
+            font=("Consolas", 9, "bold")
         )
         self.style.configure(
-            "Control.TLabel",
-            background=self.PANEL,
-            foreground=self.MUTED,
-            font=("Segoe UI", 10),
-        )
-        self.style.configure(
-            "Value.TLabel",
-            background=self.PANEL,
-            foreground=self.ACCENT,
-            font=("Consolas", 11, "bold"),
-        )
-        self.style.configure(
-            "Status.TLabel",
-            background=self.PANEL,
-            foreground=self.GREEN,
-            font=("Consolas", 9, "bold"),
-        )
-        self.style.configure(
-            "Action.TButton",
-            background=self.CARD_2,
-            foreground=self.TEXT,
-            bordercolor=self.BORDER,
-            lightcolor=self.BORDER,
-            darkcolor=self.BORDER,
-            padding=(12, 8),
-            font=("Segoe UI", 10, "bold"),
+            "Action.TButton", background=self.CARD_2, foreground=self.TEXT,
+            bordercolor=self.BORDER, lightcolor=self.BORDER,
+            darkcolor=self.BORDER, padding=(12, 8),
+            font=("Segoe UI", 10, "bold")
         )
         self.style.map(
             "Action.TButton",
@@ -348,24 +200,17 @@ class DemoApp(tk.Tk):
             foreground=[("active", self.ACCENT)],
         )
         self.style.configure(
-            "Accent.TButton",
-            background=self.ACCENT_2,
-            foreground="#ffffff",
-            borderwidth=0,
-            padding=(16, 9),
-            font=("Segoe UI", 10, "bold"),
+            "Accent.TButton", background=self.ACCENT_2, foreground="#ffffff",
+            borderwidth=0, padding=(16, 9), font=("Segoe UI", 10, "bold")
         )
         self.style.map(
             "Accent.TButton",
             background=[("active", "#8373f0"), ("pressed", "#6f5fe0")],
         )
         self.style.configure(
-            "TCombobox",
-            fieldbackground=self.CARD_2,
-            background=self.CARD_2,
-            foreground=self.TEXT,
-            arrowcolor=self.ACCENT,
-            bordercolor=self.BORDER,
+            "TCombobox", fieldbackground=self.CARD_2, background=self.CARD_2,
+            foreground=self.TEXT, arrowcolor=self.ACCENT,
+            bordercolor=self.BORDER
         )
         self.style.map(
             "TCombobox",
@@ -373,19 +218,14 @@ class DemoApp(tk.Tk):
             foreground=[("readonly", self.TEXT)],
         )
         self.style.configure(
-            "Dark.Horizontal.TScale",
-            background=self.PANEL,
-            troughcolor="#202c42",
-            bordercolor=self.BORDER,
-            lightcolor=self.ACCENT,
-            darkcolor=self.ACCENT,
+            "Dark.Horizontal.TScale", background=self.PANEL,
+            troughcolor="#202c42", bordercolor=self.BORDER,
+            lightcolor=self.ACCENT, darkcolor=self.ACCENT
         )
         self.style.configure(
-            "Vertical.TScrollbar",
-            background=self.CARD_2,
-            troughcolor=self.BG,
-            bordercolor=self.BORDER,
-            arrowcolor=self.MUTED,
+            "Vertical.TScrollbar", background=self.CARD_2,
+            troughcolor=self.BG, bordercolor=self.BORDER,
+            arrowcolor=self.MUTED
         )
 
     def _apply_theme_colors(self):
@@ -401,6 +241,7 @@ class DemoApp(tk.Tk):
         for child in self.winfo_children():
             child.destroy()
         self._build_ui()
+        self._bind_keyboard()
         self._refresh_all()
 
     def _bind_keyboard(self):
@@ -439,17 +280,12 @@ class DemoApp(tk.Tk):
             "<Configure>",
             lambda event: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
         )
-        # Keep the content full-width at any window size. Without this the
-        # inner frame keeps its narrow width when maximized/fullscreen and
-        # everything looks shifted to the middle.
         self.canvas.bind(
             "<Configure>",
             lambda event: self.canvas.itemconfig(self.canvas_window, width=event.width),
         )
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
-        # Sticky top bar: title + theme toggle + status stay visible while
-        # the controls and charts scroll underneath.
         header = ttk.Frame(self, padding=(22, 14, 22, 10), style="Root.TFrame")
         header.pack(side="top", fill="x", before=self.canvas)
 
@@ -463,25 +299,17 @@ class DemoApp(tk.Tk):
         ).pack(anchor="w", pady=(3, 0))
 
         status_frame = tk.Frame(
-            header,
-            bg=self.PANEL,
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
+            header, bg=self.PANEL,
+            highlightbackground=self.BORDER, highlightthickness=1
         )
         status_frame.pack(side="right", padx=(20, 0))
         tk.Label(
-            status_frame,
-            text="● ",
-            bg=self.PANEL,
-            fg=self.GREEN,
-            font=("Consolas", 10, "bold"),
+            status_frame, text="● ", bg=self.PANEL, fg=self.GREEN,
+            font=("Consolas", 10, "bold")
         ).pack(side="left", padx=(10, 0), pady=8)
         tk.Label(
-            status_frame,
-            textvariable=self.status_var,
-            bg=self.PANEL,
-            fg=self.TEXT,
-            font=("Consolas", 9, "bold"),
+            status_frame, textvariable=self.status_var, bg=self.PANEL,
+            fg=self.TEXT, font=("Consolas", 9, "bold")
         ).pack(side="left", padx=(0, 10), pady=8)
 
         self.theme_button = ttk.Button(
@@ -493,27 +321,20 @@ class DemoApp(tk.Tk):
         self.theme_button.pack(side="right", padx=(0, 4))
 
         controls = tk.Frame(
-            body,
-            bg=self.PANEL,
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
+            body, bg=self.PANEL,
+            highlightbackground=self.BORDER, highlightthickness=1
         )
         controls.pack(fill="x", pady=(0, 18))
 
         tk.Label(
-            controls,
-            text="CONTROL MATRIX",
-            bg=self.PANEL,
-            fg=self.TEXT,
-            font=("Consolas", 11, "bold"),
+            controls, text="CONTROL MATRIX", bg=self.PANEL, fg=self.TEXT,
+            font=("Consolas", 11, "bold")
         ).pack(anchor="w", padx=18, pady=(15, 4))
 
         tk.Label(
             controls,
             text="Adjust a parameter and the corresponding AI visualization updates immediately.",
-            bg=self.PANEL,
-            fg=self.MUTED,
-            font=("Segoe UI", 9),
+            bg=self.PANEL, fg=self.MUTED, font=("Segoe UI", 9)
         ).pack(anchor="w", padx=18, pady=(0, 14))
 
         self._add_slider(
@@ -536,12 +357,9 @@ class DemoApp(tk.Tk):
             font=("Consolas", 9, "bold")
         ).pack(side="left")
         combo = ttk.Combobox(
-            method_row,
-            textvariable=self.method_var,
-            values=["supervised", "unsupervised"],
-            state="readonly",
-            width=18,
-            font=("Segoe UI", 10),
+            method_row, textvariable=self.method_var,
+            values=["supervised", "unsupervised"], state="readonly",
+            width=18, font=("Segoe UI", 10)
         )
         combo.pack(side="right")
         combo.bind("<<ComboboxSelected>>", self._on_settings_changed)
@@ -557,53 +375,57 @@ class DemoApp(tk.Tk):
             style="Action.TButton"
         ).pack(side="left", padx=(10, 0))
         tk.Label(
-            action_row,
-            textvariable=self.fuzzy_result_var,
-            bg=self.PANEL,
-            fg=self.ACCENT,
-            font=("Consolas", 10, "bold"),
+            action_row, textvariable=self.fuzzy_result_var,
+            bg=self.PANEL, fg=self.ACCENT,
+            font=("Consolas", 10, "bold")
         ).pack(side="right")
 
         preset_row = tk.Frame(controls, bg=self.PANEL)
         preset_row.pack(fill="x", padx=18, pady=(0, 16))
-        tk.Label(preset_row, text="QUICK PRESETS", bg=self.PANEL, fg=self.MUTED,
-                 font=("Consolas", 9, "bold")).pack(side="left")
+        tk.Label(
+            preset_row, text="QUICK PRESETS", bg=self.PANEL, fg=self.MUTED,
+            font=("Consolas", 9, "bold")
+        ).pack(side="left")
         preset_combo = ttk.Combobox(
             preset_row, textvariable=self.preset_var,
-            values=["CUSTOM", "FIXED COLD  •  16°C", "FIXED NORMAL  •  22°C", "FIXED HOT  •  30°C"],
+            values=[
+                "CUSTOM",
+                "FIXED COLD  •  16°C",
+                "FIXED NORMAL  •  22°C",
+                "FIXED HOT  •  30°C",
+            ],
             state="readonly", width=24, font=("Segoe UI", 10)
         )
         preset_combo.pack(side="right")
         preset_combo.bind("<<ComboboxSelected>>", self._apply_preset)
 
-        telemetry = tk.Frame(body, bg=self.CARD, highlightbackground=self.BORDER, highlightthickness=1)
+        telemetry = tk.Frame(
+            body, bg=self.CARD,
+            highlightbackground=self.BORDER, highlightthickness=1
+        )
         telemetry.pack(fill="x", pady=(0, 14))
-        tk.Label(telemetry, textvariable=self.telemetry_var, bg=self.CARD, fg=self.ACCENT,
-                 font=("Consolas", 9, "bold"), anchor="w").pack(fill="x", padx=14, pady=10)
+        tk.Label(
+            telemetry, textvariable=self.telemetry_var, bg=self.CARD,
+            fg=self.ACCENT, font=("Consolas", 9, "bold"),
+            anchor="w"
+        ).pack(fill="x", padx=14, pady=10)
 
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
         tk.Label(
-            output_title,
-            text="LIVE OUTPUTS",
-            bg=self.BG,
-            fg=self.TEXT,
-            font=("Consolas", 12, "bold"),
+            output_title, text="LIVE OUTPUTS", bg=self.BG, fg=self.TEXT,
+            font=("Consolas", 12, "bold")
         ).pack(side="left")
         tk.Label(
-            output_title,
-            text="3 ACTIVE MODULES",
-            bg=self.BG,
-            fg=self.MUTED,
-            font=("Consolas", 8, "bold"),
+            output_title, text="3 ACTIVE MODULES", bg=self.BG, fg=self.MUTED,
+            font=("Consolas", 8, "bold")
         ).pack(side="right")
 
         self.output_grid = tk.Frame(body, bg=self.BG)
         self.output_grid.pack(fill="both", expand=True)
         self.output_grid.grid_columnconfigure(0, weight=1)
-        self.output_grid.grid_rowconfigure(0, weight=1)
-        self.output_grid.grid_rowconfigure(1, weight=1)
-        self.output_grid.grid_rowconfigure(2, weight=1)
+        for row in range(3):
+            self.output_grid.grid_rowconfigure(row, weight=1)
 
         self.fuzzy_card = self._create_output_card(
             0, 0, "01  FUZZY TEMPERATURE FIELD", "LIVE MEMBERSHIP", self.BLUE
@@ -640,19 +462,15 @@ class DemoApp(tk.Tk):
             try:
                 value_label.config(text=f"{int(variable.get())}{suffix}")
             except tk.TclError:
-                pass  # label belonged to a pre-theme-toggle layout
+                pass
 
         update_value()
         variable.trace_add("write", update_value)
 
         scale = ttk.Scale(
-            row,
-            from_=minimum,
-            to=maximum,
-            orient="horizontal",
-            variable=variable,
-            command=callback,
-            style="Dark.Horizontal.TScale",
+            row, from_=minimum, to=maximum, orient="horizontal",
+            variable=variable, command=callback,
+            style="Dark.Horizontal.TScale"
         )
         scale.pack(fill="x", pady=(7, 0))
         self._add_step_buttons(row, variable, minimum, maximum, callback)
@@ -664,15 +482,13 @@ class DemoApp(tk.Tk):
         ttk.Button(
             buttons, text="−", width=4,
             command=lambda: self._step_value(variable, -1, minimum, maximum, callback),
-            style="Action.TButton",
+            style="Action.TButton"
         ).pack(side="left")
-
         ttk.Button(
             buttons, text="+", width=4,
             command=lambda: self._step_value(variable, 1, minimum, maximum, callback),
-            style="Action.TButton",
+            style="Action.TButton"
         ).pack(side="left", padx=(6, 0))
-
         tk.Label(
             buttons, text=f"INTEGER STEP  /  {minimum}—{maximum}",
             bg=self.PANEL, fg="#4f607b", font=("Consolas", 8)
@@ -685,10 +501,8 @@ class DemoApp(tk.Tk):
 
     def _create_output_card(self, row, column, title, subtitle, accent=None):
         card = tk.Frame(
-            self.output_grid,
-            bg=self.CARD,
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
+            self.output_grid, bg=self.CARD,
+            highlightbackground=self.BORDER, highlightthickness=1
         )
         card.grid(row=row, column=column, sticky="nsew", pady=(0, 12))
         if accent is not None:
@@ -725,8 +539,6 @@ class DemoApp(tk.Tk):
         import numpy as np
 
         temps = np.linspace(10, 35, 500)
-
-        # Smooth cold -> normal -> hot field.
         gradient = np.zeros((40, 500, 3))
         cold = np.array([0.18, 0.55, 1.00])
         normal = np.array([0.18, 0.90, 0.58])
@@ -742,20 +554,12 @@ class DemoApp(tk.Tk):
             gradient[:, i, :] = color
 
         ax.imshow(
-            gradient,
-            extent=[10, 35, 0, 1],
-            aspect="auto",
-            interpolation="bicubic",
-            alpha=0.88,
+            gradient, extent=[10, 35, 0, 1], aspect="auto",
+            interpolation="bicubic", alpha=0.88
         )
-
-        # The temperature marker is intentionally the only overlay.
         ax.axvline(
-            temp_value,
-            color="#ffffff",
-            linestyle=":",
-            linewidth=2.4,
-            alpha=0.95,
+            temp_value, color="#ffffff", linestyle=":",
+            linewidth=2.4, alpha=0.95
         )
 
         ax.set_xlim(10, 35)
@@ -777,11 +581,8 @@ class DemoApp(tk.Tk):
 
         fig, ax = self._make_figure(10, 4.2)
         ax.plot(
-            x_values, y_values,
-            color=accent,
-            linewidth=2.2,
-            marker="o",
-            markersize=4,
+            x_values, y_values, color=accent, linewidth=2.2,
+            marker="o", markersize=4
         )
         ax.fill_between(x_values, y_values, 0, color=accent, alpha=0.08)
         ax.set_title(title, color=self.TEXT, fontsize=10, loc="left", pad=10)
@@ -800,28 +601,16 @@ class DemoApp(tk.Tk):
     def _render_all(self, result):
         self._draw_fuzzy(result["temperature"])
 
-        rewards = result.get("rl_rewards", [])
-        if not rewards:
-            rewards = [0.0]
+        rewards = result.get("rl_rewards", []) or [0.0]
         self._draw_line_chart(
-            self.rl_chart,
-            list(range(1, len(rewards) + 1)),
-            rewards,
-            "Reward by episode",
-            "Episode",
-            "Reward",
-            self.ACCENT_2,
+            self.rl_chart, list(range(1, len(rewards) + 1)), rewards,
+            "Reward by episode", "Episode", "Reward", self.ACCENT_2
         )
 
         y_values = normalize_values(result.get("processed_data", []))
         self._draw_line_chart(
-            self.data_chart,
-            list(range(1, len(y_values) + 1)),
-            y_values,
-            "Processed data stream",
-            "Sample",
-            "Value",
-            self.GREEN,
+            self.data_chart, list(range(1, len(y_values) + 1)), y_values,
+            "Processed data stream", "Sample", "Value", self.GREEN
         )
 
     def _update_fuzzy_only(self, animate=True):
@@ -877,8 +666,10 @@ class DemoApp(tk.Tk):
                 self.after_cancel(self._animation_job)
             except Exception:
                 pass
+
         steps = max(4, min(14, abs(target - start) * 2))
         current = 0
+
         def step():
             nonlocal current
             current += 1
@@ -890,15 +681,14 @@ class DemoApp(tk.Tk):
             else:
                 self._draw_fuzzy(target)
                 self._animation_job = None
+
         step()
 
     def _refresh_all(self):
         try:
             result = run_demo(
-                int(self.temp_var.get()),
-                int(self.rl_var.get()),
-                int(self.data_count_var.get()),
-                self.method_var.get(),
+                int(self.temp_var.get()), int(self.rl_var.get()),
+                int(self.data_count_var.get()), self.method_var.get()
             )
             self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result['fuzzy_result'].upper()}")
             self._update_telemetry(result["fuzzy_result"])
@@ -913,19 +703,20 @@ class DemoApp(tk.Tk):
         self.update_idletasks()
         try:
             result = run_demo(
-                int(self.temp_var.get()),
-                int(self.rl_var.get()),
-                int(self.data_count_var.get()),
-                self.method_var.get(),
+                int(self.temp_var.get()), int(self.rl_var.get()),
+                int(self.data_count_var.get()), self.method_var.get()
             )
             self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result['fuzzy_result'].upper()}")
+            self._update_telemetry(result["fuzzy_result"])
             self._render_all(result)
             self.status_var.set("SYSTEM ONLINE  //  LIVE")
         except Exception as exc:
             self.status_var.set("SYSTEM ERROR")
             self._set_error(str(exc))
             if messagebox is not None:
-                messagebox.showerror("AI Control Error", f"{type(exc).__name__}: {exc}")
+                messagebox.showerror(
+                    "AI Control Error", f"{type(exc).__name__}: {exc}"
+                )
 
     def reset_controls(self):
         self.temp_var.set(22)
@@ -940,15 +731,16 @@ class DemoApp(tk.Tk):
             for child in host.winfo_children():
                 child.destroy()
             tk.Label(
-                host,
-                text=f"OUTPUT ERROR\n{text}",
-                bg=self.CARD,
-                fg=self.RED,
-                font=("Consolas", 9),
-                justify="left",
+                host, text=f"OUTPUT ERROR\n{text}", bg=self.CARD, fg=self.RED,
+                font=("Consolas", 9), justify="left"
             ).pack(expand=True)
 
     def destroy(self):
+        if self._animation_job is not None:
+            try:
+                self.after_cancel(self._animation_job)
+            except Exception:
+                pass
         super().destroy()
 
 
@@ -956,7 +748,10 @@ def console_demo():
     result = run_demo()
     print(f"Fuzzy Logic System evaluated temperature: {result['fuzzy_result']}")
     print("Reinforcement Learning training completed.")
-    print(f"Data generation and processing completed: {result['processed_items']} items processed.")
+    print(
+        f"Data generation and processing completed: "
+        f"{result['processed_items']} items processed."
+    )
 
 
 def launch_gui():
