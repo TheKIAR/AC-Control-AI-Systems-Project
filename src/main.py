@@ -157,11 +157,13 @@ class DemoApp(tk.Tk):
         self._pulse_job = None
         self._pulse_on = True
         self._status_dot = None
+        self._ambient_job = None
         self._last_temp = int(self.temp_var.get())
         self._reset_chart_slots()
 
         self._build_ui()
         self._bind_keyboard()
+        self._start_ambient_animation()
         self._refresh_all()
 
     def _configure_styles(self):
@@ -253,6 +255,7 @@ class DemoApp(tk.Tk):
             child.destroy()
         self._build_ui()
         self._bind_keyboard()
+        self._start_ambient_animation()
         self._refresh_all()
 
     def _bind_keyboard(self):
@@ -279,6 +282,8 @@ class DemoApp(tk.Tk):
             pass
 
     def _build_ui(self):
+        self._create_ambient_layer()
+
         self.canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -452,6 +457,103 @@ class DemoApp(tk.Tk):
         self.data_chart = self._chart_host(self.data_card)
         self._reset_chart_slots()
         self._start_pulse()
+
+    def _create_ambient_layer(self):
+        self._ambient_canvas = tk.Canvas(
+            self, bg=self.BG, highlightthickness=0, bd=0
+        )
+        self._ambient_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self._ambient_canvas.lower()
+        self._ambient_phase = 0
+        self._ambient_particles = []
+
+        for index in range(18):
+            x = 0.03 + ((index * 0.137) % 0.94)
+            y = 0.04 + ((index * 0.271) % 0.91)
+            radius = 1 if index % 3 else 2
+            speed = 0.00018 + (index % 4) * 0.00006
+            self._ambient_particles.append([x, y, radius, speed, index % 2])
+
+        self._ambient_canvas.bind("<Configure>", lambda _event: self._draw_ambient_frame())
+
+    def _start_ambient_animation(self):
+        if self._ambient_job is not None:
+            try:
+                self.after_cancel(self._ambient_job)
+            except Exception:
+                pass
+        self._ambient_phase = 0
+        self._draw_ambient_frame()
+        self._ambient_job = self.after(45, self._animate_ambient_frame)
+
+    def _draw_ambient_frame(self):
+        if not hasattr(self, "_ambient_canvas"):
+            return
+
+        canvas = self._ambient_canvas
+        canvas.delete("all")
+        width = max(canvas.winfo_width(), 1)
+        height = max(canvas.winfo_height(), 1)
+
+        line_color = self.BORDER
+        accent_color = self.ACCENT
+
+        inset = 7
+        canvas.create_line(
+            inset, inset, width - inset, inset,
+            fill=line_color, width=1
+        )
+        canvas.create_line(
+            inset, height - inset, width - inset, height - inset,
+            fill=line_color, width=1
+        )
+        canvas.create_line(
+            inset, inset, inset, height - inset,
+            fill=line_color, width=1
+        )
+        canvas.create_line(
+            width - inset, inset, width - inset, height - inset,
+            fill=line_color, width=1
+        )
+
+        scan_x = inset + ((self._ambient_phase * 3.2) % max(width - inset * 2, 1))
+        canvas.create_line(
+            scan_x, inset, scan_x, inset + 12,
+            fill=accent_color, width=2
+        )
+        canvas.create_line(
+            width - scan_x, height - inset - 12,
+            width - scan_x, height - inset,
+            fill=accent_color, width=2
+        )
+
+        for particle in self._ambient_particles:
+            particle[0] += particle[3] * (1 if particle[4] == 0 else -1)
+            if particle[0] > 0.985:
+                particle[0] = 0.015
+            elif particle[0] < 0.015:
+                particle[0] = 0.985
+
+            x = particle[0] * width
+            y = particle[1] * height
+            r = particle[2]
+            canvas.create_oval(
+                x - r, y - r, x + r, y + r,
+                fill=self.BORDER, outline=""
+            )
+
+        self._ambient_canvas.create_line(
+            width * 0.03, height * 0.985,
+            width * 0.18, height * 0.985,
+            fill=self.ACCENT, width=1
+        )
+
+    def _animate_ambient_frame(self):
+        if not self.winfo_exists():
+            return
+        self._ambient_phase += 1
+        self._draw_ambient_frame()
+        self._ambient_job = self.after(45, self._animate_ambient_frame)
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
@@ -850,11 +952,12 @@ class DemoApp(tk.Tk):
 
     def destroy(self):
         self._stop_pulse()
-        if self._animation_job is not None:
-            try:
-                self.after_cancel(self._animation_job)
-            except Exception:
-                pass
+        for job in (self._animation_job, self._ambient_job):
+            if job is not None:
+                try:
+                    self.after_cancel(job)
+                except Exception:
+                    pass
         super().destroy()
 
 
