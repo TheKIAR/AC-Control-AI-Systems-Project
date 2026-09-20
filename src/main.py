@@ -154,7 +154,11 @@ class DemoApp(tk.Tk):
         self.fuzzy_result_var = tk.StringVar(value="")
         self.telemetry_var = tk.StringVar(value="")
         self._animation_job = None
+        self._pulse_job = None
+        self._pulse_on = True
+        self._status_dot = None
         self._last_temp = int(self.temp_var.get())
+        self._reset_chart_slots()
 
         self._build_ui()
         self._bind_keyboard()
@@ -235,6 +239,13 @@ class DemoApp(tk.Tk):
 
     def toggle_theme(self):
         self.theme = "light" if self.theme == "dark" else "dark"
+        if self._animation_job is not None:
+            try:
+                self.after_cancel(self._animation_job)
+            except Exception:
+                pass
+            self._animation_job = None
+        self._stop_pulse()
         self._apply_theme_colors()
         self.style.theme_use("clam")
         self._configure_styles()
@@ -303,10 +314,11 @@ class DemoApp(tk.Tk):
             highlightbackground=self.BORDER, highlightthickness=1
         )
         status_frame.pack(side="right", padx=(20, 0))
-        tk.Label(
+        self._status_dot = tk.Label(
             status_frame, text="● ", bg=self.PANEL, fg=self.GREEN,
             font=("Consolas", 10, "bold")
-        ).pack(side="left", padx=(10, 0), pady=8)
+        )
+        self._status_dot.pack(side="left", padx=(10, 0), pady=8)
         tk.Label(
             status_frame, textvariable=self.status_var, bg=self.PANEL,
             fg=self.TEXT, font=("Consolas", 9, "bold")
@@ -386,18 +398,16 @@ class DemoApp(tk.Tk):
             preset_row, text="QUICK PRESETS", bg=self.PANEL, fg=self.MUTED,
             font=("Consolas", 9, "bold")
         ).pack(side="left")
-        preset_combo = ttk.Combobox(
-            preset_row, textvariable=self.preset_var,
-            values=[
-                "CUSTOM",
-                "FIXED COLD  •  16°C",
-                "FIXED NORMAL  •  22°C",
-                "FIXED HOT  •  30°C",
-            ],
-            state="readonly", width=24, font=("Segoe UI", 10)
-        )
-        preset_combo.pack(side="right")
-        preset_combo.bind("<<ComboboxSelected>>", self._apply_preset)
+        for text, temp in (
+            ("❄  COLD 16°", 16),
+            ("◉  NORMAL 22°", 22),
+            ("🔥  HOT 30°", 30),
+        ):
+            ttk.Button(
+                preset_row, text=text, width=14,
+                command=lambda t=temp, label=text: self._apply_preset_value(label, t),
+                style="Action.TButton",
+            ).pack(side="left", padx=(10, 0))
 
         telemetry = tk.Frame(
             body, bg=self.CARD,
@@ -440,6 +450,8 @@ class DemoApp(tk.Tk):
         self.fuzzy_chart = self._chart_host(self.fuzzy_card)
         self.rl_chart = self._chart_host(self.rl_card)
         self.data_chart = self._chart_host(self.data_card)
+        self._reset_chart_slots()
+        self._start_pulse()
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
@@ -524,15 +536,92 @@ class DemoApp(tk.Tk):
         host.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         return host
 
+    def _embed_canvas(self, fig, host):
+        # A freshly created Tk canvas paints default white for one
+        # event-loop cycle before matplotlib blits into it - that is the
+        # white box flashing on every animation frame. Painting the raw
+        # widget in the card color first makes the swap invisible.
+        canvas = FigureCanvasTkAgg(fig, master=host)
+        canvas.draw()
+        widget = canvas.get_tk_widget()
+        widget.configure(bg=self.CARD, highlightthickness=0, bd=0)
+        widget.pack(fill="both", expand=True)
+        return canvas
+
+    def _start_pulse(self):
+        self._stop_pulse()
+        self._pulse_on = True
+        self._pulse_tick()
+
+    def _stop_pulse(self):
+        if getattr(self, "_pulse_job", None) is not None:
+            try:
+                self.after_cancel(self._pulse_job)
+            except Exception:
+                pass
+            self._pulse_job = None
+
+    def _pulse_tick(self):
+        # Little continuous heartbeat: blink the header status dot.
+        try:
+            if self._status_dot is not None and self._status_dot.winfo_exists():
+                color = self.GREEN if self._pulse_on else self.MUTED
+                self._status_dot.configure(fg=color)
+                self._pulse_on = not self._pulse_on
+                self._pulse_job = self.after(700, self._pulse_tick)
+            else:
+                self._pulse_job = None
+        except Exception:
+            self._pulse_job = None
+
     def _make_figure(self, width=10, height=4.2):
         fig = Figure(figsize=(width, height), dpi=100, facecolor=self.CARD)
         ax = fig.add_subplot(111)
         ax.set_facecolor(self.CARD)
         return fig, ax
 
+    def _reset_chart_slots(self):
+        for name in (
+            "_fuzzy_fig", "_fuzzy_ax", "_fuzzy_marker", "_fuzzy_canvas",
+            "_rl_fig", "_rl_ax", "_rl_canvas",
+            "_data_fig", "_data_ax", "_data_canvas",
+        ):
+            setattr(self, name, None)
+
+    @staticmethod
+    def _widget_alive(widget):
+        try:
+            return widget is not None and widget.winfo_exists()
+        except Exception:
+            return False
+
+    def _slot_canvas_widget(self, canvas):
+        try:
+            if canvas is not None:
+                return canvas.get_tk_widget()
+        except Exception:
+            pass
+        return None
+
     def _draw_fuzzy(self, temp_value):
+        # Persistent figure: only the marker line moves. Recreating the
+        # widget every frame caused the visible jump/flash.
+        widget = self._slot_canvas_widget(self._fuzzy_canvas)
+        if (self._fuzzy_fig is None or self._fuzzy_marker is None
+                or not self._widget_alive(widget)):
+            self._build_fuzzy_figure(temp_value)
+        try:
+            self._fuzzy_marker.set_xdata([temp_value, temp_value])
+            self._fuzzy_canvas.draw_idle()
+        except Exception:
+            pass
+
+    def _build_fuzzy_figure(self, temp_value):
         for child in self.fuzzy_chart.winfo_children():
-            child.destroy()
+            try:
+                child.destroy()
+            except Exception:
+                pass
 
         fig, ax = self._make_figure(10, 4.2)
 
@@ -557,11 +646,10 @@ class DemoApp(tk.Tk):
             gradient, extent=[10, 35, 0, 1], aspect="auto",
             interpolation="bicubic", alpha=0.88
         )
-        ax.axvline(
+        marker = ax.axvline(
             temp_value, color="#ffffff", linestyle=":",
             linewidth=2.4, alpha=0.95
         )
-
         ax.set_xlim(10, 35)
         ax.set_ylim(0, 1)
         ax.set_xticks([])
@@ -570,16 +658,43 @@ class DemoApp(tk.Tk):
             spine.set_visible(False)
 
         fig.tight_layout(pad=0.5)
-        canvas = FigureCanvasTkAgg(fig, master=self.fuzzy_chart)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
-        self._fuzzy_canvas = canvas
+        self._fuzzy_fig = fig
+        self._fuzzy_ax = ax
+        self._fuzzy_marker = marker
+        self._fuzzy_canvas = self._embed_canvas(fig, self.fuzzy_chart)
 
     def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent):
-        for child in parent.winfo_children():
-            child.destroy()
-
-        fig, ax = self._make_figure(10, 4.2)
+        # Persistent figure per chart: replot into the same axes instead of
+        # destroying the widget, so refreshes never flash or jump.
+        if parent is self.rl_chart:
+            tag = "rl"
+        elif parent is self.data_chart:
+            tag = "data"
+        else:
+            tag = None
+        canvas = getattr(self, f"_{tag}_canvas", None) if tag else None
+        widget = self._slot_canvas_widget(canvas)
+        if (tag is None or getattr(self, f"_{tag}_fig", None) is None
+                or not self._widget_alive(widget)):
+            for child in parent.winfo_children():
+                try:
+                    child.destroy()
+                except Exception:
+                    pass
+            fig, ax = self._make_figure(10, 4.2)
+            if tag:
+                setattr(self, f"_{tag}_fig", fig)
+                setattr(self, f"_{tag}_ax", ax)
+                setattr(self, f"_{tag}_canvas", self._embed_canvas(fig, parent))
+                canvas = getattr(self, f"_{tag}_canvas")
+        else:
+            fig = getattr(self, f"_{tag}_fig")
+            ax = getattr(self, f"_{tag}_ax")
+            try:
+                ax.clear()
+            except Exception:
+                pass
+            ax.set_facecolor(self.CARD)
         ax.plot(
             x_values, y_values, color=accent, linewidth=2.2,
             marker="o", markersize=4
@@ -594,9 +709,13 @@ class DemoApp(tk.Tk):
             spine.set_color(self.BORDER)
         fig.tight_layout(pad=1.2)
 
-        canvas = FigureCanvasTkAgg(fig, master=parent)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
+        if canvas is None:
+            self._embed_canvas(fig, parent)
+        else:
+            try:
+                canvas.draw_idle()
+            except Exception:
+                pass
 
     def _render_all(self, result):
         self._draw_fuzzy(result["temperature"])
@@ -649,16 +768,10 @@ class DemoApp(tk.Tk):
             f"{self.method_var.get().upper():<11} │   ● ONLINE"
         )
 
-    def _apply_preset(self, *_):
-        temperatures = {
-            "FIXED COLD  •  16°C": 16,
-            "FIXED NORMAL  •  22°C": 22,
-            "FIXED HOT  •  30°C": 30,
-        }
-        preset = self.preset_var.get()
-        if preset in temperatures:
-            self.temp_var.set(temperatures[preset])
-            self._update_fuzzy_only()
+    def _apply_preset_value(self, name, temperature):
+        self.preset_var.set(name)
+        self.temp_var.set(temperature)
+        self._update_fuzzy_only()
 
     def _animate_temperature(self, start, target):
         if self._animation_job is not None:
@@ -667,7 +780,7 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
-        steps = max(4, min(14, abs(target - start) * 2))
+        steps = max(3, min(10, abs(target - start)))
         current = 0
 
         def step():
@@ -677,7 +790,7 @@ class DemoApp(tk.Tk):
             smooth = progress * progress * (3 - 2 * progress)
             self._draw_fuzzy(start + (target - start) * smooth)
             if current < steps:
-                self._animation_job = self.after(18, step)
+                self._animation_job = self.after(28, step)
             else:
                 self._draw_fuzzy(target)
                 self._animation_job = None
@@ -723,7 +836,7 @@ class DemoApp(tk.Tk):
         self.rl_var.set(5)
         self.data_count_var.set(5)
         self.method_var.set("supervised")
-        self.preset_var.set("FIXED NORMAL  •  22°C")
+        self.preset_var.set("◉  NORMAL 22°")
         self._refresh_all()
 
     def _set_error(self, text):
@@ -736,6 +849,7 @@ class DemoApp(tk.Tk):
             ).pack(expand=True)
 
     def destroy(self):
+        self._stop_pulse()
         if self._animation_job is not None:
             try:
                 self.after_cancel(self._animation_job)
