@@ -188,11 +188,11 @@ class DemoApp(tk.Tk):
         )
         self.style.configure(
             "Value.TLabel", background=self.PANEL, foreground=self.ACCENT,
-            font=("Consolas", 11, "bold")
+            font=("Segoe UI", 11, "bold")
         )
         self.style.configure(
             "Status.TLabel", background=self.PANEL, foreground=self.GREEN,
-            font=("Consolas", 9, "bold")
+            font=("Segoe UI", 9, "bold")
         )
         self.style.configure(
             "Action.TButton", background=self.CARD_2, foreground=self.TEXT,
@@ -309,7 +309,7 @@ class DemoApp(tk.Tk):
 
         title_frame = ttk.Frame(header, style="Root.TFrame")
         title_frame.pack(side="left")
-        ttk.Label(title_frame, text="AI CONTROL", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(title_frame, text="AI Control System", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             title_frame,
             text="Fuzzy Logic  •  Reinforcement Learning  •  Data Processing",
@@ -323,7 +323,7 @@ class DemoApp(tk.Tk):
         status_frame.pack(side="right", padx=(20, 0))
         self._status_dot = tk.Label(
             status_frame, text="● ", bg=self.PANEL, fg=self.GREEN,
-            font=("Consolas", 10, "bold")
+            font=("Segoe UI", 10, "bold")
         )
         self._status_dot.pack(side="left", padx=(10, 0), pady=8)
         tk.Label(
@@ -372,7 +372,7 @@ class DemoApp(tk.Tk):
         method_row = tk.Frame(controls, bg=self.PANEL)
         method_row.pack(fill="x", padx=18, pady=(3, 16))
         tk.Label(
-            method_row, text="DATA METHOD", bg=self.PANEL, fg=self.MUTED,
+            method_row, text="Data Method", bg=self.PANEL, fg=self.MUTED,
             font=("Consolas", 9, "bold")
         ).pack(side="left")
         combo = ttk.Combobox(
@@ -682,8 +682,11 @@ class DemoApp(tk.Tk):
 
         scale = ttk.Scale(
             row, from_=minimum, to=maximum, orient="horizontal",
-            variable=variable, command=callback,
-            style="Dark.Horizontal.TScale"
+            variable=variable, command=lambda _v: (
+                variable.set(max(minimum, min(maximum, int(round(float(variable.get())))))),
+                callback()
+            )[1],
+            style="Modern.Horizontal.TScale"
         )
         scale.pack(fill="x", pady=(7, 0))
         self._add_step_buttons(row, variable, minimum, maximum, callback)
@@ -704,7 +707,7 @@ class DemoApp(tk.Tk):
         ).pack(side="left", padx=(6, 0))
         tk.Label(
             buttons, text=f"INTEGER STEP  /  {minimum}—{maximum}",
-            bg=self.PANEL, fg="#4f607b", font=("Consolas", 8)
+            bg=self.PANEL, fg="#4f607b", font=("Segoe UI", 8)
         ).pack(side="right")
 
     def _step_value(self, variable, amount, minimum, maximum, callback):
@@ -783,7 +786,7 @@ class DemoApp(tk.Tk):
 
     def _reset_chart_slots(self):
         for name in (
-            "_fuzzy_fig", "_fuzzy_ax", "_fuzzy_marker", "_fuzzy_canvas",
+            "_fuzzy_fig", "_fuzzy_ax", "_fuzzy_marker", "_fuzzy_glow_outer", "_fuzzy_glow_inner", "_fuzzy_canvas",
             "_rl_fig", "_rl_ax", "_rl_canvas",
             "_data_fig", "_data_ax", "_data_canvas",
         ):
@@ -813,6 +816,8 @@ class DemoApp(tk.Tk):
             self._build_fuzzy_figure(temp_value)
         try:
             self._fuzzy_marker.set_xdata([temp_value, temp_value])
+            self._fuzzy_glow_outer.set_xdata([temp_value, temp_value])
+            self._fuzzy_glow_inner.set_xdata([temp_value, temp_value])
             self._fuzzy_canvas.draw_idle()
         except Exception:
             pass
@@ -847,10 +852,9 @@ class DemoApp(tk.Tk):
             gradient, extent=[10, 35, 0, 1], aspect="auto",
             interpolation="bicubic", alpha=0.88
         )
-        marker = ax.axvline(
-            temp_value, color="#ffffff", linestyle=":",
-            linewidth=2.4, alpha=0.95
-        )
+        glow_outer = ax.axvline(temp_value, color=self.ACCENT, linewidth=8, alpha=0.08)
+        glow_inner = ax.axvline(temp_value, color=self.ACCENT, linewidth=4, alpha=0.14)
+        marker = ax.axvline(temp_value, color="#ffffff", linestyle=":", linewidth=2.2, alpha=0.98)
         ax.set_xlim(10, 35)
         ax.set_ylim(0, 1)
         ax.set_xticks([])
@@ -862,6 +866,8 @@ class DemoApp(tk.Tk):
         self._fuzzy_fig = fig
         self._fuzzy_ax = ax
         self._fuzzy_marker = marker
+        self._fuzzy_glow_outer = glow_outer
+        self._fuzzy_glow_inner = glow_inner
         self._fuzzy_canvas = self._embed_canvas(fig, self.fuzzy_chart)
 
     def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent):
