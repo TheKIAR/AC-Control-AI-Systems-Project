@@ -469,11 +469,11 @@ class DemoApp(tk.Tk):
         self._ambient_phase = 0
         self._ambient_particles = []
 
-        for index in range(18):
+        for index in range(10):
             x = 0.03 + ((index * 0.137) % 0.94)
             y = 0.04 + ((index * 0.271) % 0.91)
-            radius = 1 if index % 3 else 2
-            speed = 0.00018 + (index % 4) * 0.00006
+            radius = 1
+            speed = 0.00008 + (index % 4) * 0.000025
             self._ambient_particles.append([x, y, radius, speed, index % 2])
 
         self._ambient_canvas.bind("<Configure>", lambda _event: self._draw_ambient_frame())
@@ -486,7 +486,7 @@ class DemoApp(tk.Tk):
                 pass
         self._ambient_phase = 0
         self._draw_ambient_frame()
-        self._ambient_job = self.after(45, self._animate_ambient_frame)
+        self._ambient_job = self.after(70, self._animate_ambient_frame)
 
     def _draw_ambient_frame(self):
         if not hasattr(self, "_ambient_canvas"):
@@ -518,10 +518,10 @@ class DemoApp(tk.Tk):
             fill=line_color, width=1
         )
 
-        scan_x = inset + ((self._ambient_phase * 3.2) % max(width - inset * 2, 1))
+        scan_x = inset + ((self._ambient_phase * 1.1) % max(width - inset * 2, 1))
         canvas.create_line(
             scan_x, inset, scan_x, inset + 12,
-            fill=accent_color, width=2
+            fill=accent_color, width=1
         )
         canvas.create_line(
             width - scan_x, height - inset - 12,
@@ -547,7 +547,7 @@ class DemoApp(tk.Tk):
         self._ambient_canvas.create_line(
             width * 0.03, height * 0.985,
             width * 0.18, height * 0.985,
-            fill=self.ACCENT, width=1
+            fill=self.BORDER, width=1
         )
 
     def _animate_ambient_frame(self):
