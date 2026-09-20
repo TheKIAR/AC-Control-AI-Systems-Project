@@ -13,7 +13,6 @@ setup(
     name='ai-systems-project',
     version='0.1.0',
     author='Md. Ragib Ashhab',
-    author_email='ragib.ashhab@example.com',
     description='A project implementing fuzzy logic, reinforcement learning, and data-driven AI systems.',
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
