@@ -82,7 +82,10 @@ def run_demo(temp_value=22, rl_episodes=5, data_points=5, data_method="supervise
     }
 
 
-def _rounded_rect(canvas, x1, y1, x2, y2, radius, fill, outline=None, width=1):
+def _rounded_rect(canvas, x1, y1, x2, y2, radius, fill, outline="", width=1):
+    # NOTE: outline must default to "" (no stroke). The previous default of
+    # None made Tk fall back to a black 1px arc outline, which showed up as
+    # dark notches at every rounded corner and arc joint.
     r = min(radius, max(1, (x2 - x1) / 2), max(1, (y2 - y1) / 2))
     canvas.create_arc(x1, y1, x1 + 2*r, y1 + 2*r, start=90, extent=90,
                       fill=fill, outline=outline, width=width)
@@ -154,9 +157,17 @@ class RoundedPanel(tk.Frame):
         w = max(self.winfo_width(), 4)
         h = max(self.winfo_height(), 4)
         self._canvas.delete("all")
+        # Two fill-only layers (rim behind, panel inset) instead of one
+        # stroked shape: a 1px outline stroke overhangs the arc joints and
+        # leaves dark ticks on the panel corners.
         _rounded_rect(
             self._canvas, 1, 1, w - 1, h - 1,
-            self._radius, self._panel_bg, self._border, 1
+            self._radius, self._border
+        )
+        pad = 2
+        _rounded_rect(
+            self._canvas, 1 + pad, 1 + pad, w - 1 - pad, h - 1 - pad,
+            max(1, self._radius - pad), self._panel_bg
         )
 
 
