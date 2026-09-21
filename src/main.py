@@ -732,6 +732,9 @@ class DemoApp(tk.Tk):
                                    font=("Consolas", 9, "bold"),
                                    anchor="w", justify="left")
         self.agree_lamp.pack(fill="x", pady=(2, 0))
+        self.fopl_room = tk.Canvas(advisor_section, bg=self.PANEL, height=250,
+                                   highlightthickness=0, bd=0)
+        self.fopl_room.pack(fill="x", pady=(6, 0))
         self.fopl_chart = tk.Frame(advisor_section, bg=self.PANEL)
         self.fopl_chart.pack(fill="x", pady=(6, 0))
         tk.Label(advisor_section, text="INFERENCE TRACE  —  click a rule bar for its logic",
@@ -1633,6 +1636,7 @@ class DemoApp(tk.Tk):
             fired = [r.name for r in rules
                      if any(line.startswith(r.name) for line in advisor.get("fired", []))]
             self._draw_fopl_chart([r.name for r in rules], fired)
+            self._draw_fopl_room(conclusions)
             trace_lines = []
             step_no = 0
             for line in advisor.get("fired", []):
@@ -1731,6 +1735,105 @@ class DemoApp(tk.Tk):
             canvas.draw_idle()
         except Exception:
             pass
+
+    def _draw_fopl_room(self, conclusions):
+        # Live room schematic: every device lights up from the current
+        # conclusions. AC / heater / lights / blinds / windows / alert.
+        canvas = getattr(self, "fopl_room", None)
+        if canvas is None:
+            return
+        try:
+            if not canvas.winfo_exists():
+                return
+        except Exception:
+            return
+        w = max(canvas.winfo_width(), 2)
+        h = 250
+        if w < 10:
+            return
+        text = "  ·  ".join(conclusions)
+        if "AC_HIGH" in text:
+            ac = ("HIGH", self.ACCENT)
+        elif "AC_ECO" in text:
+            ac = ("ECO", self.GREEN)
+        elif "AC_STANDBY" in text:
+            ac = ("STANDBY", self.MUTED)
+        else:
+            ac = ("OFF", self.BORDER)
+        heater = ("ON", "#ff9a3c") if "HEATER_ON" in text else ("OFF", self.BORDER)
+        if "LIGHTS_OFF" in text:
+            lights = ("OFF", 0)
+        elif "DIM_LIGHTS" in text:
+            lights = ("DIM", 4)
+        else:
+            lights = ("ON", 8)
+        blinds = "DOWN" if "BLINDS_DOWN" in text else "OPEN"
+        windows = "OPEN" if "WINDOWS_OPEN" in text else "CLOSED"
+        alert = "ALERT_OVERHEAT" in text
+        self._room_state = {"ac": ac[0], "heater": heater[0], "lights": lights[0],
+                            "blinds": blinds, "windows": windows, "alert": alert}
+        canvas.delete("all")
+        canvas.create_rectangle(12, 12, w - 12, h - 12,
+                                fill=self.CARD, outline=self.BORDER, width=2)
+        canvas.create_text(28, 30, text="ROOM R1 — LIVE", anchor="w",
+                           fill=self.MUTED, font=("Consolas", 9, "bold"))
+        # Window + blinds (left).
+        wx0, wy0, wx1, wy1 = 30, 60, 200, 180
+        canvas.create_rectangle(wx0, wy0, wx1, wy1,
+                                fill=self.CARD_2, outline=self.MUTED, width=2)
+        canvas.create_line((wx0 + wx1) / 2, wy0, (wx0 + wx1) / 2, wy1, fill=self.MUTED)
+        canvas.create_line(wx0, (wy0 + wy1) / 2, wx1, (wy0 + wy1) / 2, fill=self.MUTED)
+        if blinds == "DOWN":
+            for i in range(5):
+                y = wy0 + 14 + i * 22
+                canvas.create_line(wx0 + 6, y, wx1 - 6, y, fill=self.TEXT, width=3)
+        if windows == "OPEN":
+            canvas.create_line(wx1, wy0, wx1 + 42, wy0 + 30, fill=self.GREEN, width=3)
+            canvas.create_line(wx1 + 52, wy0 + 8, wx1 + 72, wy0 + 8, fill=self.GREEN, width=2)
+            canvas.create_line(wx1 + 52, wy0 + 20, wx1 + 72, wy0 + 20, fill=self.GREEN, width=2)
+        # Ceiling light (center).
+        lx = w / 2
+        canvas.create_line(lx, 12, lx, 40, fill=self.MUTED)
+        lname, rays = lights
+        bulb = "#ffd76a" if lname == "ON" else (self.MUTED if lname == "DIM" else self.CARD_2)
+        edge = "#ffd76a" if lname == "ON" else (self.MUTED if lname == "DIM" else self.BORDER)
+        canvas.create_oval(lx - 14, 40, lx + 14, 68, fill=bulb, outline=edge, width=2)
+        for k in range(rays):
+            ang = math.radians(k * 360 / max(rays, 1))
+            canvas.create_line(lx + 18 * math.cos(ang), 54 + 18 * math.sin(ang),
+                               lx + 26 * math.cos(ang), 54 + 26 * math.sin(ang),
+                               fill=edge, width=2)
+        # AC wall unit (top right).
+        ax0, ax1 = w - 260, w - 40
+        lit = ac[0] in ("HIGH", "ECO")
+        canvas.create_rectangle(ax0, 30, ax1, 82,
+                                fill=ac[1] if lit else self.CARD_2,
+                                outline=ac[1], width=2)
+        for i in range(3):
+            x = ax0 + 30 + i * 40
+            canvas.create_line(x, 88, x - 8, 100, fill=ac[1], width=2)
+        # Heater (bottom right).
+        hx0, hx1, hy0, hy1 = w - 260, w - 40, h - 110, h - 46
+        canvas.create_rectangle(hx0, hy0, hx1, hy1,
+                                fill=self.CARD_2, outline=heater[1], width=2)
+        for i in range(5):
+            x = hx0 + 20 + i * 36
+            canvas.create_line(x, hy0 + 8, x, hy1 - 8, fill=heater[1], width=3)
+        # Overheat badge.
+        if alert:
+            canvas.create_polygon(w / 2, 22, w / 2 - 26, 64, w / 2 + 26, 64,
+                                  fill="#ff4d5e", outline="")
+            canvas.create_text(w / 2, 52, text="!", fill="#ffffff",
+                               font=("Segoe UI", 12, "bold"))
+            canvas.create_text(w / 2, 78, text="OVERHEAT", fill="#ff4d5e",
+                               font=("Consolas", 10, "bold"))
+        # Bottom status labels.
+        canvas.create_text(30, h - 22, text=f"WINDOW {windows} · BLINDS {blinds}",
+                           anchor="w", fill=self.MUTED, font=("Consolas", 8, "bold"))
+        canvas.create_text(lx, h - 22, text=f"LIGHT {lname}",
+                           fill=self.MUTED, font=("Consolas", 8, "bold"))
+        canvas.create_text(w - 40, h - 22, text=f"AC {ac[0]} · HEATER {heater[0]}",
+                           anchor="e", fill=self.MUTED, font=("Consolas", 8, "bold"))
 
     def _render_all(self, result):
         self._last_result = result
