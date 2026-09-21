@@ -693,6 +693,36 @@ class DemoApp(tk.Tk):
                 width=116, height=36, radius=14
             ).pack(side="left", padx=(10, 0))
 
+        advisor_section = tk.Frame(controls, bg=self.PANEL)
+        advisor_section.pack(fill="x", padx=18, pady=(0, 16))
+        tk.Label(
+            advisor_section, text="LOGIC ADVISOR  —  ROOM POLICY", bg=self.PANEL,
+            fg=self.MUTED, font=("Segoe UI", 9, "bold")
+        ).pack(anchor="w", pady=(0, 6))
+        toggle_row = tk.Frame(advisor_section, bg=self.PANEL)
+        toggle_row.pack(fill="x", pady=(0, 4))
+        for text, var in (("Occupied", self.occupied_var),
+                          ("Night", self.night_var),
+                          ("Energy saver", self.saver_var)):
+            tk.Checkbutton(toggle_row, text=text, variable=var,
+                           command=self._refresh_fopl,
+                           bg=self.PANEL, fg=self.TEXT,
+                           selectcolor=self.CARD_2,
+                           activebackground=self.PANEL,
+                           activeforeground=self.TEXT,
+                           font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 16))
+
+        self.fopl_box = tk.Label(advisor_section, text="",
+                                 bg=self.PANEL, fg=self.TEXT,
+                                 font=("Consolas", 9, "bold"),
+                                 anchor="w", justify="left")
+        self.fopl_box.pack(fill="x", pady=(2, 0))
+        self.agree_lamp = tk.Label(advisor_section, textvariable=self.agree_var,
+                                   bg=self.PANEL, fg=self.GREEN,
+                                   font=("Consolas", 9, "bold"),
+                                   anchor="w", justify="left")
+        self.agree_lamp.pack(fill="x", pady=(2, 0))
+
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
         tk.Label(
@@ -710,7 +740,6 @@ class DemoApp(tk.Tk):
         self.output_grid.grid_rowconfigure(0, weight=3)
         self.output_grid.grid_rowconfigure(1, weight=1)
         self.output_grid.grid_rowconfigure(2, weight=1)
-        self.output_grid.grid_rowconfigure(3, weight=1)
 
         self.fuzzy_card = self._create_output_card(
             0, 0, "Fuzzy Temperature", "Live", self.BLUE
@@ -721,9 +750,6 @@ class DemoApp(tk.Tk):
         self.data_card = self._create_output_card(
             2, 0, "Data Processing", "Processed Data", self.GREEN
         )
-        self.fopl_card = self._create_output_card(
-            3, 0, "Logic Advisor", "FOPL Rules", self.ACCENT
-        )
 
         self.fuzzy_chart = self._chart_host(self.fuzzy_card)
         self.rl_chart = self._chart_host(self.rl_card)
@@ -732,30 +758,6 @@ class DemoApp(tk.Tk):
         tk.Label(self.data_card, textvariable=self.data_stats_var,
                  bg=self.CARD, fg=self.MUTED, font=("Consolas", 8),
                  anchor="w", justify="left").pack(fill="x", padx=18, pady=(0, 10))
-
-        toggle_row = tk.Frame(self.fopl_card, bg=self.CARD)
-        toggle_row.pack(fill="x", padx=18, pady=(4, 2))
-        for text, var in (("Occupied", self.occupied_var),
-                          ("Night", self.night_var),
-                          ("Energy saver", self.saver_var)):
-            tk.Checkbutton(toggle_row, text=text, variable=var,
-                           command=self._refresh_fopl,
-                           bg=self.CARD, fg=self.TEXT,
-                           selectcolor=self.CARD_2,
-                           activebackground=self.CARD,
-                           activeforeground=self.TEXT,
-                           font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 16))
-
-        self.fopl_box = tk.Label(self.fopl_card, text="",
-                                 bg=self.CARD, fg=self.TEXT,
-                                 font=("Consolas", 9, "bold"),
-                                 anchor="w", justify="left")
-        self.fopl_box.pack(fill="x", padx=18, pady=(2, 0))
-        self.agree_lamp = tk.Label(self.fopl_card, textvariable=self.agree_var,
-                                   bg=self.CARD, fg=self.GREEN,
-                                   font=("Consolas", 9, "bold"),
-                                   anchor="w", justify="left")
-        self.agree_lamp.pack(fill="x", padx=18, pady=(2, 10))
         self._reset_chart_slots()
         self._start_pulse()
         self._schedule_weather_cycle()
