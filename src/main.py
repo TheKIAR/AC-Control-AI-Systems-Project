@@ -135,25 +135,16 @@ class RoundedButton(tk.Canvas):
 
 
 class RoundedPanel(tk.Frame):
-    def __init__(self, master, bg, panel_bg, radius=18, border=None, **kwargs):
+    def __init__(self, master, bg, panel_bg, radius=20, border=None, **kwargs):
         super().__init__(master, bg=bg, bd=0, highlightthickness=0, **kwargs)
         self._panel_bg = panel_bg
         self._border = border or panel_bg
         self._radius = radius
-
-        self._canvas = tk.Canvas(
-            self, bg=bg, highlightthickness=0, bd=0
-        )
+        self._canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0)
         self._canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
-
-        # Inset the content so the background canvas remains visible at
-        # every corner, producing an actual rounded surface.
-        inset = max(8, radius // 2)
-        self.inner = tk.Frame(
-            self, bg=panel_bg, bd=0, highlightthickness=0
-        )
-        self.inner.pack(fill="both", expand=True, padx=inset, pady=inset)
-
+        self.inner = tk.Frame(self, bg=panel_bg, bd=0, highlightthickness=0)
+        self.inner.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.inner.lift()
         self.bind("<Configure>", self._redraw)
 
     def _redraw(self, event=None):
@@ -164,7 +155,11 @@ class RoundedPanel(tk.Frame):
             self._canvas, 1, 1, w - 1, h - 1,
             self._radius, self._panel_bg, self._border, 1
         )
-
+        # Keep content slightly inset so the square child frame never reaches corners.
+        inset = max(6, self._radius // 2)
+        self.inner.place(
+            x=inset, y=inset, width=max(1, w-2*inset), height=max(1, h-2*inset)
+        )
 
 
 class DemoApp(tk.Tk):
@@ -175,41 +170,15 @@ class DemoApp(tk.Tk):
     BORDER = "#4a505a"
     TEXT = "#f5f3ef"
     MUTED = "#aeb2ba"
-    ACCENT = "#e58b5b"
-    ACCENT_2 = "#e58b5b"
-    GREEN = "#6fbd8b"
-    RED = "#e56b73"
-    BLUE = "#e58b5b"
+    ACCENT = "#35cfe5"
+    ACCENT_2 = "#35cfe5"
+    GREEN = "#35cfe5"
+    RED = "#79dce8"
+    BLUE = "#35cfe5"
 
     THEMES = {
-        "dark": {
-            "BG": "#17181c",
-            "PANEL": "#22252b",
-            "CARD": "#2a2e36",
-            "CARD_2": "#343943",
-            "BORDER": "#4a505a",
-            "TEXT": "#f5f3ef",
-            "MUTED": "#aeb2ba",
-            "ACCENT": "#e58b5b",
-            "ACCENT_2": "#e58b5b",
-            "GREEN": "#6fbd8b",
-            "RED": "#e56b73",
-            "BLUE": "#e58b5b",
-        },
-        "light": {
-            "BG": "#e9eef5",
-            "PANEL": "#ffffff",
-            "CARD": "#ffffff",
-            "CARD_2": "#eef3f9",
-            "BORDER": "#c3cfdf",
-            "TEXT": "#0f1c30",
-            "MUTED": "#5b6b84",
-            "ACCENT": "#0284c7",
-            "ACCENT_2": "#7c3aed",
-            "GREEN": "#059669",
-            "RED": "#dc2626",
-            "BLUE": "#2563eb",
-        },
+        "dark": {"BG":"#0d1117","PANEL":"#151b23","CARD":"#1b2430","CARD_2":"#24303d","BORDER":"#334252","TEXT":"#e8f7fa","MUTED":"#91a8b0","ACCENT":"#35cfe5","ACCENT_2":"#35cfe5","GREEN":"#35cfe5","RED":"#79dce8","BLUE":"#35cfe5"},
+        "light": {"BG":"#edf7f9","PANEL":"#f8fcfd","CARD":"#ffffff","CARD_2":"#e7f3f6","BORDER":"#b9d5db","TEXT":"#18343a","MUTED":"#607d84","ACCENT":"#079bb3","ACCENT_2":"#079bb3","GREEN":"#079bb3","RED":"#3e9cac","BLUE":"#079bb3"},
     }
 
     def __init__(self):
@@ -285,7 +254,7 @@ class DemoApp(tk.Tk):
         )
         self.style.map(
             "Action.TButton",
-            background=[("active", "#1d2a42"), ("pressed", "#263957")],
+            background=[("active", "#1f3340"), ("pressed", "#294452")],
             foreground=[("active", self.ACCENT)],
         )
         self.style.configure(
@@ -294,7 +263,7 @@ class DemoApp(tk.Tk):
         )
         self.style.map(
             "Accent.TButton",
-            background=[("active", "#8373f0"), ("pressed", "#6f5fe0")],
+            background=[("active", "#16aec4"), ("pressed", "#079bb3")],
         )
         self.style.configure(
             "TCombobox", fieldbackground=self.CARD_2, background=self.CARD_2,
@@ -308,7 +277,7 @@ class DemoApp(tk.Tk):
         )
         self.style.configure(
             "Modern.Horizontal.TScale", background=self.PANEL,
-            troughcolor="#202c42", bordercolor=self.BORDER,
+            troughcolor="#1b2b34", bordercolor=self.BORDER,
             lightcolor=self.ACCENT, darkcolor=self.ACCENT
         )
         self.style.configure(
@@ -334,7 +303,6 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
             self._animation_job = None
-        self._stop_pulse()
         self._apply_theme_colors()
         self.style.theme_use("clam")
         self._configure_styles()
@@ -409,7 +377,7 @@ class DemoApp(tk.Tk):
         ).pack(anchor="w", pady=(3, 0))
 
         status_shell = RoundedPanel(
-            header, self.BG, self.CARD, radius=16, border=self.BORDER,
+            header, self.BG, self.CARD, radius=14, border=self.BORDER,
             width=170, height=38
         )
         status_shell.pack(side="right", padx=(12, 0))
@@ -427,14 +395,14 @@ class DemoApp(tk.Tk):
 
         self.theme_button = RoundedButton(
             header,
-            text="Light mode" if self.theme == "dark" else "Dark mode",
+            text="Light" if self.theme == "dark" else "Dark",
             command=self.toggle_theme,
-            bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+            bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
             width=118, height=38, radius=16
         )
         self.theme_button.pack(side="right", padx=(0, 4))
 
-        controls_shell, controls = self._rounded_panel(body, bg=self.BG, radius=22)
+        controls_shell, controls = self._rounded_panel(body, bg=self.BG, radius=20)
         controls_shell.pack(fill="x", pady=(0, 18), ipady=4)
 
         tk.Label(
@@ -484,7 +452,7 @@ class DemoApp(tk.Tk):
         ).pack(side="left")
         RoundedButton(
             action_row, text="Reset", command=self.reset_controls,
-            bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+            bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
             width=88, height=40, radius=16
         ).pack(side="left", padx=(10, 0))
         tk.Label(
@@ -507,8 +475,8 @@ class DemoApp(tk.Tk):
             RoundedButton(
                 preset_row, text=text,
                 command=lambda t=temp, label=text: self._apply_preset_value(label, t),
-                bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
-                width=116, height=36, radius=15
+                bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
+                width=116, height=36, radius=14
             ).pack(side="left", padx=(10, 0))
 
         output_title = tk.Frame(body, bg=self.BG)
@@ -614,7 +582,7 @@ class DemoApp(tk.Tk):
             x2, y2 = points[i + 1]
             c.create_line(
                 x1, y1, x2, y2,
-                fill="#e58b5b", width=7, capstyle="round"
+                fill="#35cfe5", width=7, capstyle="round"
             )
 
         self._frame_phase += 1
@@ -670,13 +638,13 @@ class DemoApp(tk.Tk):
         RoundedButton(
             buttons, text="−",
             command=lambda: self._step_value(variable, -1, minimum, maximum, callback),
-            bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+            bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
             width=42, height=32, radius=13
         ).pack(side="left")
         RoundedButton(
             buttons, text="+",
             command=lambda: self._step_value(variable, 1, minimum, maximum, callback),
-            bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+            bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
             width=42, height=32, radius=13
         ).pack(side="left", padx=(6, 0))
         tk.Label(
