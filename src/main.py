@@ -536,8 +536,13 @@ class DemoApp(tk.Tk):
         self.bind("<Configure>", self._resize_frame_animation, add="+")
 
     def _resize_frame_animation(self, _event=None):
-        if getattr(self, "_frame_canvas", None) is not None:
-            self._animate_frame()
+        # Static repaint only: never start the loop from here, otherwise
+        # every resize/scroll Configure event spawns its own infinite
+        # 32ms chain and they pile up into hundreds of timers.
+        try:
+            self._paint_frame()
+        except Exception:
+            pass
 
     def _start_frame_animation(self):
         if getattr(self, "_frame_job", None):
@@ -545,10 +550,14 @@ class DemoApp(tk.Tk):
                 self.after_cancel(self._frame_job)
             except Exception:
                 pass
+        self._frame_job = None
+        # Generation counter: loops from a previous layout (e.g. before a
+        # theme toggle rebuilt the widgets) die quietly instead of piling up.
+        self._frame_gen = getattr(self, "_frame_gen", 0) + 1
         self._frame_phase = 0
-        self._animate_frame()
+        self._animate_frame(self._frame_gen)
 
-    def _animate_frame(self):
+    def _paint_frame(self):
         if not self.winfo_exists():
             return
         c = self._frame_canvas
@@ -595,7 +604,21 @@ class DemoApp(tk.Tk):
             )
 
         self._frame_phase += 1
-        self._frame_job = self.after(32, self._animate_frame)
+
+    def _animate_frame(self, gen=None):
+        # Single loop only: stale generations (pre-toggle leftovers) exit
+        # without rescheduling, and a dead canvas stops the loop instead of
+        # spamming background errors every 32ms.
+        if gen is None:
+            gen = getattr(self, "_frame_gen", 0)
+        if gen != getattr(self, "_frame_gen", 0):
+            return
+        try:
+            self._paint_frame()
+        except Exception:
+            self._frame_job = None
+            return
+        self._frame_job = self.after(32, lambda g=gen: self._animate_frame(g))
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
