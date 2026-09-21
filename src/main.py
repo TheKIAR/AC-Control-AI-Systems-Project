@@ -220,6 +220,11 @@ class DemoApp(tk.Tk):
         self._pulse_job = None
         self._pulse_level = 0
         self._scroll_job = None
+        self._refit_job = None
+        self._fig_width = 10.0
+        self._fitted_width = 0
+        self._last_result = None
+        self._fade_gen = 0
         self._status_dot = None
         self._last_temp = int(self.temp_var.get())
         self._reset_chart_slots()
@@ -322,6 +327,38 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
             self._scroll_job = None
+        if getattr(self, "_refit_job", None) is not None:
+            try:
+                self.after_cancel(self._refit_job)
+            except Exception:
+                pass
+            self._refit_job = None
+        # Dip the window opacity, rebuild under cover, fade back in: the
+        # light/dark swap reads as one smooth transition instead of a pop.
+        self._fade_gen = getattr(self, "_fade_gen", 0) + 1
+        self._fade_out(self._fade_gen, 1.0)
+
+    def _fade_out(self, gen, alpha):
+        if gen != getattr(self, "_fade_gen", 0):
+            return
+        try:
+            if not self.winfo_exists():
+                return
+            alpha = max(0.35, alpha - 0.22)
+            self.attributes("-alpha", alpha)
+        except Exception:
+            pass
+        if alpha <= 0.36:
+            self._finish_toggle(gen)
+        else:
+            try:
+                self.after(14, lambda: self._fade_out(gen, alpha))
+            except Exception:
+                pass
+
+    def _finish_toggle(self, gen):
+        if gen != getattr(self, "_fade_gen", 0):
+            return
         self._apply_theme_colors()
         self.style.theme_use("clam")
         self._configure_styles()
@@ -331,6 +368,23 @@ class DemoApp(tk.Tk):
         self._bind_keyboard()
         self._refresh_all()
         self._start_frame_animation()
+        self._fade_in(gen, 0.35)
+
+    def _fade_in(self, gen, alpha):
+        if gen != getattr(self, "_fade_gen", 0):
+            return
+        try:
+            if not self.winfo_exists():
+                return
+            alpha = min(1.0, alpha + 0.22)
+            self.attributes("-alpha", alpha)
+        except Exception:
+            return
+        if alpha < 1.0:
+            try:
+                self.after(14, lambda: self._fade_in(gen, alpha))
+            except Exception:
+                pass
 
     def _bind_keyboard(self):
         self.bind("<Up>", lambda e: self._keyboard_temp(1))
@@ -429,7 +483,8 @@ class DemoApp(tk.Tk):
         )
         self.canvas.bind(
             "<Configure>",
-            lambda event: self.canvas.itemconfig(self.canvas_window, width=event.width),
+            lambda event: (self.canvas.itemconfig(self.canvas_window, width=event.width),
+                           self._schedule_refit()),
         )
         self.unbind_all("<MouseWheel>")
         self.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
@@ -877,7 +932,7 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
-        fig, ax = self._make_figure(10, 4.2)
+        fig, ax = self._make_figure(getattr(self, "_fig_width", 10.0), 4.2)
 
         import numpy as np # type: ignore
 
@@ -921,6 +976,45 @@ class DemoApp(tk.Tk):
         self._fuzzy_glow = glow
         self._fuzzy_canvas = self._embed_canvas(fig, self.fuzzy_chart)
 
+    def _schedule_refit(self):
+        # Debounced: after a resize/fullscreen settles, rebuild the figures
+        # at the real pixel width so charts stay crisp instead of stretching.
+        if getattr(self, "_refit_job", None) is not None:
+            try:
+                self.after_cancel(self._refit_job)
+            except Exception:
+                pass
+        try:
+            self._refit_job = self.after(300, self._refit_charts)
+        except Exception:
+            pass
+
+    def _refit_charts(self):
+        self._refit_job = None
+        try:
+            if not self.winfo_exists():
+                return
+            result = getattr(self, "_last_result", None)
+            if result is None:
+                return
+            width_px = self.fuzzy_chart.winfo_width()
+            if width_px < 200:
+                return
+            if abs(width_px - getattr(self, "_fitted_width", 0)) < 60:
+                return
+            self._fitted_width = width_px
+            self._fig_width = min(16.0, max(6.0, width_px / 100.0))
+            # Drop the cached figures; the draw paths rebuild them at the
+            # new width with the same data (no retraining, no flicker since
+            # widgets are replaced under cover of draw_idle).
+            self._fuzzy_fig = None
+            self._fuzzy_marker = None
+            self._rl_fig = None
+            self._data_fig = None
+            self._render_all(result)
+        except Exception:
+            pass
+
     def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent):
         # Persistent figure per chart: replot into the same axes instead of
         # destroying the widget, so refreshes never flash or jump.
@@ -939,7 +1033,7 @@ class DemoApp(tk.Tk):
                     child.destroy()
                 except Exception:
                     pass
-            fig, ax = self._make_figure(10, 4.2)
+            fig, ax = self._make_figure(getattr(self, "_fig_width", 10.0), 4.2)
             if tag:
                 setattr(self, f"_{tag}_fig", fig)
                 setattr(self, f"_{tag}_ax", ax)
@@ -976,6 +1070,7 @@ class DemoApp(tk.Tk):
                 pass
 
     def _render_all(self, result):
+        self._last_result = result
         self._draw_fuzzy(result["temperature"])
 
         rewards = result.get("rl_rewards", []) or [0.0]
@@ -1092,7 +1187,7 @@ class DemoApp(tk.Tk):
     def destroy(self):
         self._stop_pulse()
         for job in (getattr(self, "_animation_job", None), getattr(self, "_frame_job", None),
-                    getattr(self, "_scroll_job", None)):
+                    getattr(self, "_scroll_job", None), getattr(self, "_refit_job", None)):
             if job is not None:
                 try:
                     self.after_cancel(job)
