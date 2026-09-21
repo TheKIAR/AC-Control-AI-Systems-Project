@@ -31,7 +31,7 @@ except Exception:
 
 try:
     from fuzzy_logic.fuzzy_system import FuzzySystem
-    from fopl.advisor import build_advisor
+    from fopl.advisor import build_advisor, build_rules
     from reinforcement_learning.agent import RLAgent
     from reinforcement_learning.env import RLEnvironment
     from reinforcement_learning.trainer import RLTrainer
@@ -39,7 +39,7 @@ try:
     from data_driven.pipeline import DataPipeline
 except ImportError:
     from src.fuzzy_logic.fuzzy_system import FuzzySystem
-    from src.fopl.advisor import build_advisor
+    from src.fopl.advisor import build_advisor, build_rules
     from src.reinforcement_learning.agent import RLAgent
     from src.reinforcement_learning.env import RLEnvironment
     from src.reinforcement_learning.trainer import RLTrainer
@@ -732,6 +732,8 @@ class DemoApp(tk.Tk):
                                    font=("Consolas", 9, "bold"),
                                    anchor="w", justify="left")
         self.agree_lamp.pack(fill="x", pady=(2, 0))
+        self.fopl_chart = tk.Frame(advisor_section, bg=self.PANEL)
+        self.fopl_chart.pack(fill="x", pady=(6, 0))
 
         timeline_shell, timeline_inner = self._rounded_panel(body, bg=self.BG, radius=18)
         timeline_shell.pack(fill="x", pady=(0, 16))
@@ -1278,6 +1280,7 @@ class DemoApp(tk.Tk):
             "_fuzzy_fig", "_fuzzy_ax", "_fuzzy_marker", "_fuzzy_canvas",
             "_rl_fig", "_rl_ax", "_rl_canvas",
             "_data_fig", "_data_ax", "_data_canvas",
+            "_fopl_fig", "_fopl_ax", "_fopl_canvas",
         ):
             setattr(self, name, None)
 
@@ -1608,6 +1611,62 @@ class DemoApp(tk.Tk):
         self.agree_var.set(f"{'● AGREE' if ok else '● DIFFERS'}  //  FUZZY {what} vs POLICY")
         if self.agree_lamp is not None:
             self.agree_lamp.configure(fg=self.GREEN if ok else self.RED)
+        try:
+            rules = build_rules()
+            fired = [r.name for r in rules
+                     if any(line.startswith(r.name) for line in advisor.get("fired", []))]
+            self._draw_fopl_chart([r.name for r in rules], fired)
+        except Exception:
+            pass
+
+    def _draw_fopl_chart(self, rule_names, fired_names):
+        # Rule-firing map, styled like the fuzzy field: every policy rule as
+        # a horizontal bar, fired ones lit, the rest dimmed. Persistent
+        # figure, so updates never flash or jump.
+        parent = getattr(self, "fopl_chart", None)
+        if parent is None:
+            return
+        canvas = getattr(self, "_fopl_canvas", None)
+        widget = self._slot_canvas_widget(canvas)
+        if (getattr(self, "_fopl_fig", None) is None
+                or not self._widget_alive(widget)):
+            for child in parent.winfo_children():
+                try:
+                    child.destroy()
+                except Exception:
+                    pass
+            fig, ax = self._make_figure(10, 3.0)
+            self._fopl_fig, self._fopl_ax = fig, ax
+            self._fopl_canvas = self._embed_canvas(fig, parent)
+            canvas = self._fopl_canvas
+        else:
+            fig = self._fopl_fig
+            ax = self._fopl_ax
+            try:
+                ax.clear()
+            except Exception:
+                pass
+            ax.set_facecolor(self.CARD)
+        fired = set(fired_names)
+        values = [1.0 if name in fired else 0.12 for name in rule_names]
+        colors = [self.GREEN if name in fired else self.BORDER for name in rule_names]
+        ax.barh(rule_names, values, color=colors, height=0.55)
+        ax.set_xlim(0, 1.15)
+        ax.set_xticks([])
+        ax.set_title("Rule firings", color=self.TEXT, fontsize=10, loc="left", pad=10)
+        ax.tick_params(axis="y", colors=self.MUTED, labelsize=7)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        for label, name in zip(ax.get_yticklabels(), rule_names):
+            try:
+                label.set_color(self.TEXT if name in fired else self.MUTED)
+            except Exception:
+                pass
+        fig.tight_layout(pad=1.0)
+        try:
+            canvas.draw_idle()
+        except Exception:
+            pass
 
     def _render_all(self, result):
         self._last_result = result
