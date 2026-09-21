@@ -217,6 +217,9 @@ class DemoApp(tk.Tk):
         self.fuzzy_result_var = tk.StringVar(value="")
         self.telemetry_var = tk.StringVar(value="")
         self._animation_job = None
+        self._pulse_job = None
+        self._pulse_level = 0
+        self._scroll_job = None
         self._status_dot = None
         self._last_temp = int(self.temp_var.get())
         self._reset_chart_slots()
@@ -312,6 +315,13 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
             self._animation_job = None
+        self._stop_pulse()
+        if getattr(self, "_scroll_job", None) is not None:
+            try:
+                self.after_cancel(self._scroll_job)
+            except Exception:
+                pass
+            self._scroll_job = None
         self._apply_theme_colors()
         self.style.theme_use("clam")
         self._configure_styles()
@@ -340,10 +350,61 @@ class DemoApp(tk.Tk):
         self._step_value(self.rl_var, amount, 1, 20, self._on_settings_changed)
 
     def _on_mousewheel(self, event):
+        # Glide instead of jumping: animate toward the target position over
+        # ~100ms. A new wheel tick cancels the previous glide mid-flight.
         try:
-            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            notch = (event.delta / 120.0) if getattr(event, "delta", 0) else 0.0
+            if notch:
+                self._smooth_scroll_by(notch * 48.0)
         except Exception:
             pass
+
+    def _smooth_scroll_by(self, pixels):
+        try:
+            top, bottom = self.canvas.yview()
+        except Exception:
+            return
+        if (top <= 0.0 and pixels < 0) or (bottom >= 1.0 and pixels > 0):
+            return
+        try:
+            height = float(str(self.canvas.cget("scrollregion")).split()[3])
+        except Exception:
+            height = 1000.0
+        target = min(1.0, max(0.0, top + pixels / max(height, 1.0)))
+        self._glide_to(target)
+
+    def _glide_to(self, target, frames=6):
+        if getattr(self, "_scroll_job", None) is not None:
+            try:
+                self.after_cancel(self._scroll_job)
+            except Exception:
+                pass
+            self._scroll_job = None
+        try:
+            start = self.canvas.yview()[0]
+        except Exception:
+            return
+        delta = target - start
+        if abs(delta) < 1e-4:
+            return
+        step_no = 0
+
+        def glide():
+            nonlocal step_no
+            step_no += 1
+            progress = min(1.0, step_no / frames)
+            eased = progress * progress * (3 - 2 * progress)
+            try:
+                self.canvas.yview_moveto(start + delta * eased)
+            except Exception:
+                self._scroll_job = None
+                return
+            if step_no < frames:
+                self._scroll_job = self.after(16, glide)
+            else:
+                self._scroll_job = None
+
+        glide()
 
     def _rounded_panel(self, parent, bg=None, radius=18):
         outer = RoundedPanel(
@@ -520,6 +581,46 @@ class DemoApp(tk.Tk):
         self.rl_chart = self._chart_host(self.rl_card)
         self.data_chart = self._chart_host(self.data_card)
         self._reset_chart_slots()
+        self._start_pulse()
+
+    @staticmethod
+    def _blend(color_a, color_b, t):
+        # Linear RGB blend: t=0 -> color_a, t=1 -> color_b.
+        def channel(a, b):
+            return int(round(a + (b - a) * t))
+
+        r1, g1, b1 = int(color_a[1:3], 16), int(color_a[3:5], 16), int(color_a[5:7], 16)
+        r2, g2, b2 = int(color_b[1:3], 16), int(color_b[3:5], 16), int(color_b[5:7], 16)
+        return f"#{channel(r1, r2):02x}{channel(g1, g2):02x}{channel(b1, b2):02x}"
+
+    def _start_pulse(self):
+        self._stop_pulse()
+        self._pulse_level = 0
+        self._pulse_tick()
+
+    def _stop_pulse(self):
+        if getattr(self, "_pulse_job", None) is not None:
+            try:
+                self.after_cancel(self._pulse_job)
+            except Exception:
+                pass
+            self._pulse_job = None
+
+    def _pulse_tick(self):
+        # Glow fade instead of a hard blink: ramp the dot GREEN -> MUTED
+        # and back over a ping-pong ramp.
+        try:
+            if self._status_dot is not None and self._status_dot.winfo_exists():
+                steps = 8
+                level = self._pulse_level % (2 * steps)
+                t = level / steps if level <= steps else (2 * steps - level) / steps
+                self._status_dot.configure(fg=self._blend(self.GREEN, self.MUTED, t))
+                self._pulse_level += 1
+                self._pulse_job = self.after(110, self._pulse_tick)
+            else:
+                self._pulse_job = None
+        except Exception:
+            self._pulse_job = None
 
     def _create_frame_animation(self):
         # A single visible border sweep: modern, clean, and intentionally prominent.
@@ -573,7 +674,7 @@ class DemoApp(tk.Tk):
         )
 
         perimeter = 2 * (w - 2 * inset) + 2 * (h - 2 * inset)
-        distance = (self._frame_phase * 12) % perimeter
+        distance = (self._frame_phase * 5) % perimeter
         segment = 230
 
         def point_at(d):
@@ -618,7 +719,7 @@ class DemoApp(tk.Tk):
         except Exception:
             self._frame_job = None
             return
-        self._frame_job = self.after(32, lambda g=gen: self._animate_frame(g))
+        self._frame_job = self.after(25, lambda g=gen: self._animate_frame(g))
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
@@ -989,7 +1090,9 @@ class DemoApp(tk.Tk):
             ).pack(expand=True)
 
     def destroy(self):
-        for job in (getattr(self, "_animation_job", None), getattr(self, "_frame_job", None)):
+        self._stop_pulse()
+        for job in (getattr(self, "_animation_job", None), getattr(self, "_frame_job", None),
+                    getattr(self, "_scroll_job", None)):
             if job is not None:
                 try:
                     self.after_cancel(job)
