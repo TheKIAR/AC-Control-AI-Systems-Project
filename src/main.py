@@ -1,4 +1,6 @@
 import argparse
+import math
+import random
 import sys
 from pathlib import Path
 
@@ -28,14 +30,14 @@ except Exception:
     FIGURE_AVAILABLE = False
 
 try:
-    from fuzzy_logic.fuzzy_system import FuzzySystem
+    from fuzzy_logic.fuzzy_system import FuzzySystem, COLD_MAX, COMFORT_MAX
     from reinforcement_learning.agent import RLAgent
     from reinforcement_learning.env import RLEnvironment
     from reinforcement_learning.trainer import RLTrainer
     from data_driven.generator import DataGenerator
     from data_driven.pipeline import DataPipeline
 except ImportError:
-    from src.fuzzy_logic.fuzzy_system import FuzzySystem
+    from src.fuzzy_logic.fuzzy_system import FuzzySystem, COLD_MAX, COMFORT_MAX
     from src.reinforcement_learning.agent import RLAgent
     from src.reinforcement_learning.env import RLEnvironment
     from src.reinforcement_learning.trainer import RLTrainer
@@ -225,6 +227,8 @@ class DemoApp(tk.Tk):
         self._fitted_width = 0
         self._last_result = None
         self._fade_gen = 0
+        self._weather = None
+        self._weather_parts = []
         self._status_dot = None
         self._last_temp = int(self.temp_var.get())
         self._reset_chart_slots()
@@ -722,6 +726,8 @@ class DemoApp(tk.Tk):
         h = max(c.winfo_height(), 2)
         c.delete("all")
 
+        self._paint_weather(c, w, h)
+
         # Static thin border + one clearly moving segment.
         inset = 3
         c.create_rectangle(
@@ -761,6 +767,90 @@ class DemoApp(tk.Tk):
             )
 
         self._frame_phase += 1
+
+    @staticmethod
+    def _weather_for_temp(temperature):
+        # Same 20/24 borders as the fuzzy controller: cold -> snow,
+        # comfort -> rain, warm/hot -> sun.
+        if temperature < COLD_MAX:
+            return "snow"
+        if temperature > COMFORT_MAX:
+            return "sun"
+        return "rain"
+
+    def _spawn_weather(self, mode):
+        parts = []
+        if mode == "snow":
+            for _ in range(36):
+                parts.append({
+                    "bx": random.random(), "by": random.random(),
+                    "spd": 0.0016 + random.random() * 0.0022,
+                    "sway": 0.008 + random.random() * 0.022,
+                    "ph": random.random() * 6.28,
+                    "r": random.choice((1, 1, 2, 2, 3)),
+                    "shade": random.choice(("flake0", "flake0", "flake1", "flake2")),
+                })
+        elif mode == "rain":
+            for _ in range(55):
+                parts.append({
+                    "bx": random.random(), "by": random.random(),
+                    "spd": 0.011 + random.random() * 0.009,
+                    "drift": 0.0012,
+                    "len": 9 + random.random() * 8,
+                })
+        else:  # sun: slow rising golden motes
+            for _ in range(24):
+                parts.append({
+                    "bx": random.random(), "by": random.random(),
+                    "spd": 0.0012 + random.random() * 0.0018,
+                    "ph": random.random() * 6.28,
+                    "r": random.choice((1, 2, 2, 3)),
+                })
+        self._weather = mode
+        self._weather_parts = parts
+
+    def _paint_weather(self, c, w, h):
+        try:
+            temperature = float(self.temp_var.get())
+        except Exception:
+            temperature = COMFORT_MAX
+        mode = self._weather_for_temp(temperature)
+        if mode != self._weather:
+            self._spawn_weather(mode)
+        phase = self._frame_phase
+        if mode == "snow":
+            shades = {
+                "flake0": "#ffffff", "flake1": "#d7e9f2", "flake2": "#a9c9da",
+            } if self.theme == "dark" else {
+                "flake0": "#5f8ba3", "flake1": "#7fa9c0", "flake2": "#a9c9da",
+            }
+            for p in self._weather_parts:
+                x = ((p["bx"] + p["sway"] * math.sin(phase * 0.05 + p["ph"])) % 1.0) * w
+                y = ((p["by"] + phase * p["spd"]) % 1.0) * h
+                r = p["r"]
+                c.create_oval(x - r, y - r, x + r, y + r,
+                              fill=shades[p["shade"]], outline="")
+        elif mode == "rain":
+            color = self.ACCENT
+            for p in self._weather_parts:
+                x = ((p["bx"] + phase * p["drift"]) % 1.0) * w
+                y = ((p["by"] + phase * p["spd"]) % 1.0) * h
+                ln = p["len"]
+                c.create_line(x, y, x - ln * 0.35, y + ln, fill=color, width=1)
+        else:
+            gold, soft = "#f5b942", "#e08a2e"
+            cx, cy = w - 110, 96
+            glow = 30 + 5 * math.sin(phase * 0.08)
+            c.create_oval(cx - glow - 12, cy - glow - 12, cx + glow + 12, cy + glow + 12,
+                          fill="", outline=gold, width=1)
+            c.create_oval(cx - 30, cy - 30, cx + 30, cy + 30, fill=gold, outline="")
+            for p in self._weather_parts:
+                x = ((p["bx"] + 0.004 * math.sin(phase * 0.04 + p["ph"])) % 1.0) * w
+                y = ((p["by"] - phase * p["spd"]) % 1.0) * h
+                r = p["r"]
+                c.create_oval(x - r, y - r, x + r, y + r,
+                              fill=soft if int(phase + p["ph"] * 10) % 2 else gold,
+                              outline="")
 
     def _animate_frame(self, gen=None):
         # Single loop only: stale generations (pre-toggle leftovers) exit
