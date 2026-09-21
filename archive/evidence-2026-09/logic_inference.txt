@@ -1,0 +1,14 @@
+Smart-Room FOPL Advisor
+=======================
+Input: 30.0C (Hot), occupied=True, night=False, energy_saver=False
+
+Facts:
+  AC_HIGH(R1)
+  Hot(R1)
+  Occupied(R1)
+
+Conclusions:
+  AC_HIGH(R1)
+
+Fired rules:
+  R1-HighCooling {r=R1}: → AC_HIGH(R1)

@@ -1702,7 +1702,7 @@ class DemoApp(tk.Tk):
 
         step()
 
-    def _refresh_all(self):
+    def _refresh_all(self, auto=False):
         try:
             result = run_demo(
                 int(self.temp_var.get()), int(self.rl_var.get()),

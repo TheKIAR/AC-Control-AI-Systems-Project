@@ -1,0 +1,7 @@
+AI Systems Project Summary
+========================
+Fuzzy result: Maintain Temperature
+Temperature: 30C
+RL episodes: 5 (best reward 13.92)
+Data points: 5 (supervised)
+Pipeline min: 0.00, max: 25.00, mean: 5.87
