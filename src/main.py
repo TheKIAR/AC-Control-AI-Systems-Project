@@ -82,34 +82,99 @@ def run_demo(temp_value=22, rl_episodes=5, data_points=5, data_method="supervise
     }
 
 
+def _rounded_rect(canvas, x1, y1, x2, y2, radius, fill, outline=None, width=1):
+    r = min(radius, max(1, (x2 - x1) / 2), max(1, (y2 - y1) / 2))
+    canvas.create_arc(x1, y1, x1 + 2*r, y1 + 2*r, start=90, extent=90,
+                      fill=fill, outline=outline, width=width)
+    canvas.create_arc(x2 - 2*r, y1, x2, y1 + 2*r, start=0, extent=90,
+                      fill=fill, outline=outline, width=width)
+    canvas.create_arc(x2 - 2*r, y2 - 2*r, x2, y2, start=270, extent=90,
+                      fill=fill, outline=outline, width=width)
+    canvas.create_arc(x1, y2 - 2*r, x1 + 2*r, y2, start=180, extent=90,
+                      fill=fill, outline=outline, width=width)
+    canvas.create_rectangle(x1 + r, y1, x2 - r, y2, fill=fill, outline="")
+    canvas.create_rectangle(x1, y1 + r, x2, y2 - r, fill=fill, outline="")
+
+
+class RoundedButton(tk.Canvas):
+    def __init__(self, master, text, command, bg, fg, hover, width=120, height=38, radius=14, **kwargs):
+        super().__init__(master, width=width, height=height, bg=master.cget("bg"),
+                         highlightthickness=0, bd=0, **kwargs)
+        self._text = text
+        self._command = command
+        self._bg = bg
+        self._fg = fg
+        self._hover = hover
+        self._radius = radius
+        self._draw(False)
+        self.bind("<Enter>", lambda e: self._draw(True))
+        self.bind("<Leave>", lambda e: self._draw(False))
+        self.bind("<Button-1>", lambda e: self._click())
+
+    def _draw(self, hover):
+        self.delete("all")
+        w = int(self["width"])
+        h = int(self["height"])
+        fill = self._hover if hover else self._bg
+        _rounded_rect(self, 2, 2, w-2, h-2, self._radius, fill)
+        self.create_text(w/2, h/2, text=self._text, fill=self._fg,
+                         font=("Segoe UI", 10, "bold"))
+
+    def _click(self):
+        if callable(self._command):
+            self._command()
+
+
+class RoundedPanel(tk.Canvas):
+    def __init__(self, master, bg, panel_bg, radius=18, border=None, **kwargs):
+        super().__init__(master, bg=bg, highlightthickness=0, bd=0, **kwargs)
+        self._panel_bg = panel_bg
+        self._border = border or panel_bg
+        self._radius = radius
+        self.inner = tk.Frame(self, bg=panel_bg, bd=0, highlightthickness=0)
+        self._window = self.create_window((0, 0), window=self.inner, anchor="nw")
+        self.bind("<Configure>", self._resize)
+
+    def _resize(self, event):
+        w, h = max(event.width, 4), max(event.height, 4)
+        self.delete("background")
+        self._draw_background(w, h)
+        self.itemconfigure(self._window, x=2, y=2, width=max(1, w-4), height=max(1, h-4))
+
+    def _draw_background(self, w, h):
+        r = self._radius
+        _rounded_rect(self, 1, 1, w-1, h-1, r, self._panel_bg, self._border, 1)
+        # Cover the center so child frame does not show square edges beyond the rounded shell.
+        self.tag_raise(self._window)
+
 class DemoApp(tk.Tk):
-    BG = "#15171c"
-    PANEL = "#1e2229"
-    CARD = "#252a32"
-    CARD_2 = "#2c313a"
-    BORDER = "#414751"
-    TEXT = "#f4f5f7"
-    MUTED = "#a7adb8"
-    ACCENT = "#4f8cff"
-    ACCENT_2 = "#4f8cff"
-    GREEN = "#45c486"
-    RED = "#ef6b73"
-    BLUE = "#4f8cff"
+    BG = "#17181c"
+    PANEL = "#22252b"
+    CARD = "#2a2e36"
+    CARD_2 = "#343943"
+    BORDER = "#4a505a"
+    TEXT = "#f5f3ef"
+    MUTED = "#aeb2ba"
+    ACCENT = "#e58b5b"
+    ACCENT_2 = "#e58b5b"
+    GREEN = "#6fbd8b"
+    RED = "#e56b73"
+    BLUE = "#e58b5b"
 
     THEMES = {
         "dark": {
-            "BG": "#15171c",
-            "PANEL": "#1e2229",
-            "CARD": "#252a32",
-            "CARD_2": "#2c313a",
-            "BORDER": "#414751",
-            "TEXT": "#f4f5f7",
-            "MUTED": "#a7adb8",
-            "ACCENT": "#4f8cff",
-            "ACCENT_2": "#4f8cff",
-            "GREEN": "#45c486",
-            "RED": "#ef6b73",
-            "BLUE": "#4f8cff",
+            "BG": "#17181c",
+            "PANEL": "#22252b",
+            "CARD": "#2a2e36",
+            "CARD_2": "#343943",
+            "BORDER": "#4a505a",
+            "TEXT": "#f5f3ef",
+            "MUTED": "#aeb2ba",
+            "ACCENT": "#e58b5b",
+            "ACCENT_2": "#e58b5b",
+            "GREEN": "#6fbd8b",
+            "RED": "#e56b73",
+            "BLUE": "#e58b5b",
         },
         "light": {
             "BG": "#e9eef5",
@@ -154,10 +219,7 @@ class DemoApp(tk.Tk):
         self.fuzzy_result_var = tk.StringVar(value="")
         self.telemetry_var = tk.StringVar(value="")
         self._animation_job = None
-        self._pulse_job = None
-        self._pulse_on = True
         self._status_dot = None
-        self._ambient_job = None
         self._last_temp = int(self.temp_var.get())
         self._reset_chart_slots()
 
@@ -286,6 +348,13 @@ class DemoApp(tk.Tk):
         except Exception:
             pass
 
+    def _rounded_panel(self, parent, bg=None, radius=18):
+        outer = RoundedPanel(
+            parent, self.BG if bg is None else bg, self.CARD,
+            radius=radius, border=self.BORDER
+        )
+        return outer, outer.inner
+
     def _build_ui(self):
         self._create_frame_animation()
         self.canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0)
@@ -319,34 +388,34 @@ class DemoApp(tk.Tk):
             style="Subtitle.TLabel",
         ).pack(anchor="w", pady=(3, 0))
 
-        status_frame = tk.Frame(
-            header, bg=self.PANEL,
-            highlightbackground=self.BORDER, highlightthickness=1
+        status_shell = RoundedPanel(
+            header, self.BG, self.CARD, radius=16, border=self.BORDER,
+            width=170, height=38
         )
-        status_frame.pack(side="right", padx=(20, 0))
+        status_shell.pack(side="right", padx=(12, 0))
+        status_frame = status_shell.inner
         self._status_dot = tk.Label(
-            status_frame, text="● ", bg=self.PANEL, fg=self.GREEN,
+            status_frame, text="●", bg=self.CARD, fg=self.GREEN,
             font=("Segoe UI", 10, "bold")
         )
-        self._status_dot.pack(side="left", padx=(10, 0), pady=8)
+        self._status_dot.pack(side="left", padx=(10, 4), pady=8)
         tk.Label(
-            status_frame, textvariable=self.status_var, bg=self.PANEL,
+            status_frame, textvariable=self.status_var, bg=self.CARD,
             fg=self.TEXT, font=("Segoe UI", 9, "bold")
         ).pack(side="left", padx=(0, 10), pady=8)
 
-        self.theme_button = ttk.Button(
+
+        self.theme_button = RoundedButton(
             header,
-            text="🌙  DARK" if self.theme == "light" else "☀  LIGHT",
+            text="Light mode" if self.theme == "dark" else "Dark mode",
             command=self.toggle_theme,
-            style="Action.TButton",
+            bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+            width=118, height=38, radius=16
         )
         self.theme_button.pack(side="right", padx=(0, 4))
 
-        controls = tk.Frame(
-            body, bg=self.PANEL,
-            highlightbackground=self.BORDER, highlightthickness=1
-        )
-        controls.pack(fill="x", pady=(0, 18))
+        controls_shell, controls = self._rounded_panel(body, bg=self.BG, radius=22)
+        controls_shell.pack(fill="x", pady=(0, 18), ipady=4)
 
         tk.Label(
             controls, text="Controls", bg=self.PANEL, fg=self.TEXT,
@@ -388,13 +457,15 @@ class DemoApp(tk.Tk):
 
         action_row = tk.Frame(controls, bg=self.PANEL)
         action_row.pack(fill="x", padx=18, pady=(0, 16))
-        ttk.Button(
+        RoundedButton(
             action_row, text="Run System", command=self.run_demo,
-            style="Accent.TButton"
+            bg=self.ACCENT, fg="#ffffff", hover="#6a9fff",
+            width=128, height=40, radius=16
         ).pack(side="left")
-        ttk.Button(
+        RoundedButton(
             action_row, text="Reset", command=self.reset_controls,
-            style="Action.TButton"
+            bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+            width=88, height=40, radius=16
         ).pack(side="left", padx=(10, 0))
         tk.Label(
             action_row, textvariable=self.fuzzy_result_var,
@@ -413,10 +484,11 @@ class DemoApp(tk.Tk):
             ("Normal 22°C", 22),
             ("Hot 30°C", 30),
         ):
-            ttk.Button(
-                preset_row, text=text, width=14,
+            RoundedButton(
+                preset_row, text=text,
                 command=lambda t=temp, label=text: self._apply_preset_value(label, t),
-                style="Action.TButton",
+                bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+                width=116, height=36, radius=15
             ).pack(side="left", padx=(10, 0))
 
         output_title = tk.Frame(body, bg=self.BG)
@@ -487,7 +559,7 @@ class DemoApp(tk.Tk):
         inset = 3
         c.create_rectangle(
             inset, inset, w - inset, h - inset,
-            outline="#414751", width=2
+            outline="#4a505a", width=2
         )
 
         perimeter = 2 * (w - 2 * inset) + 2 * (h - 2 * inset)
@@ -518,7 +590,7 @@ class DemoApp(tk.Tk):
             x2, y2 = points[i + 1]
             c.create_line(
                 x1, y1, x2, y2,
-                fill="#4f8cff", width=7, capstyle="round"
+                fill="#e58b5b", width=7, capstyle="round"
             )
 
         self._frame_phase += 1
@@ -571,15 +643,17 @@ class DemoApp(tk.Tk):
         buttons = tk.Frame(parent, bg=self.PANEL)
         buttons.pack(fill="x", pady=(3, 0))
 
-        ttk.Button(
-            buttons, text="−", width=4,
+        RoundedButton(
+            buttons, text="−",
             command=lambda: self._step_value(variable, -1, minimum, maximum, callback),
-            style="Action.TButton"
+            bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+            width=42, height=32, radius=13
         ).pack(side="left")
-        ttk.Button(
-            buttons, text="+", width=4,
+        RoundedButton(
+            buttons, text="+",
             command=lambda: self._step_value(variable, 1, minimum, maximum, callback),
-            style="Action.TButton"
+            bg=self.CARD_2, fg=self.TEXT, hover="#3a414c",
+            width=42, height=32, radius=13
         ).pack(side="left", padx=(6, 0))
         tk.Label(
             buttons, text=f"INTEGER STEP  /  {minimum}—{maximum}",
@@ -592,15 +666,15 @@ class DemoApp(tk.Tk):
         callback()
 
     def _create_output_card(self, row, column, title, subtitle, accent=None):
-        card = tk.Frame(
-            self.output_grid, bg=self.CARD,
-            highlightbackground=self.BORDER, highlightthickness=1
-        )
-        card.grid(row=row, column=column, sticky="nsew", pady=(0, 12))
+        shell, card = self._rounded_panel(self.output_grid, bg=self.BG, radius=20)
+        shell.grid(row=row, column=column, sticky="nsew", pady=(0, 12))
         if accent is not None:
-            tk.Frame(card, bg=accent, height=3).pack(fill="x")
-        header = tk.Frame(card, bg=self.CARD)
-        header.pack(fill="x", padx=14, pady=(12, 6))
+            # A small rounded accent pill, rather than a sharp top stripe.
+            pill = tk.Canvas(card, bg=self.CARD, height=7, highlightthickness=0, bd=0)
+            pill.pack(fill="x", padx=18, pady=(10, 0))
+            _rounded_rect(pill, 0, 1, 72, 6, 3, accent)
+        header = tk.Frame(card, bg=self.CARD, bd=0, highlightthickness=0)
+        header.pack(fill="x", padx=18, pady=(8, 6))
         tk.Label(
             header, text=title, bg=self.CARD, fg=self.TEXT,
             font=("Segoe UI", 10, "bold")
