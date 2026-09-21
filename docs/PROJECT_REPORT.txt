@@ -1,171 +1,308 @@
-# AI Systems Project — Final Report (CSE-334, Primeasia University)
+# AI Systems Project — Final Report
 
-**Student name:** ……………………………… **ID:** …………………… **Course:** CSE-334, Summer 2026
-**Date:** ……………………
+**CSE-334: Project — Department of CSE, Primeasia University**
 
-> Course final project (open-ended). The brief asks for **any THREE** of the four
-> problems; this project solves **all four** (the fourth as extension), tied to one
-> room so the methods can be compared. All behaviours below were verified by
-> running the app and its automated tests (`27 collected`: 26 passing, 1 GUI
-> smoke test that runs on Linux display environments).
+**Project Title:** Integrated AI Systems for Smart Room and Air-Conditioning Control  
+**Student Name:** Md. Ragib Ashhab  
+**Student ID:** __________________  
+**Semester:** Summer 2026  
+**Submission Date:** 24 September 2026
 
-| # | Problem from the brief | Solved in |
-|---|---|---|
-| P1 | Fuzzy logic system to control air conditioning | `src/fuzzy_logic/` |
-| P2 | First-Order Predicate Logic system, real-world use case | `src/fopl/` (smart-room advisor) |
-| P3 | Reinforcement learning system, real-world use case | `src/reinforcement_learning/` (thermostat setpoint tracking) |
-| P4 | Data-driven method (supervised or unsupervised) to generate AI | `src/data_driven/` (both: supervised + unsupervised) |
+## 1. Introduction
 
-Run it: `python run_gui.py` (or double-click `run_gui.bat`, or run
-`dist/AISystemsProject.exe`). Console fallback: `python run_gui.py --console`.
+This project develops an integrated artificial intelligence system for a smart room/air-conditioning use case. The course brief requires the student to solve **any three of four** open-ended AI problems. This project addresses the three selected problems directly:
+
+1. Fuzzy logic-based AI system to control air conditioning.
+2. First-Order Predicate Logic (FOPL)-based AI system for a real-world use case.
+3. Reinforcement-learning-based AI system for a real-world use case.
+
+A data-driven module is also included as an extension for generating and preparing experimental data.
+
+The system uses one common room scenario so that the methods can be demonstrated consistently. The application provides a graphical interface where temperature, occupancy, night condition, energy-saving preference, and RL training episodes can be changed before running the integrated AI pipeline.
+
+## 2. Objectives
+
+- Develop a fuzzy logic controller for an air-conditioning system.
+- Develop a FOPL knowledge base and inference system for smart-room decisions.
+- Develop a reinforcement-learning agent for thermostat setpoint tracking.
+- Collect and prepare information required by the selected AI methods.
+- Analyze the methods using a real-world-inspired room scenario.
+- Present the solution and explain the results during project demonstration and viva.
+- Include a data-driven extension to support experimentation and AI-data preparation.
 
 ---
 
-## Task 1 — Collect and prepare information required (5)
+# Task 1 — Collect and Prepare Information Required (5 Marks)
 
-**Problem domain.** One study room / classroom served by one split AC unit.
-Goals, in order: human comfort, low energy waste, basic safety. Using a single
-room for all four methods keeps every result comparable.
+## 1.1 Problem Information
 
-**Information gathered.**
+The selected real-world environment is a study room/classroom containing one split AC unit. The important inputs are room temperature, occupancy, night condition, and energy-saving preference.
 
-- **Comfort band 20–24°C.** The fuzzy controller commits at these borders
-  (decision crossovers ≈19.6°C and ≈24.4°C); the FOPL policy reuses the same
-  20/24 borders, so "hot" means the same thing in both methods.
-- **Heat-stress limit ≈33°C.** Above this the room is a safety case, not a
-  comfort case (`ExtremeHeat → ALERT_OVERHEAT`, with `Hot` also asserted so
-  cooling rules still fire).
-- **Room sensors assumed:** temperature in °C, occupancy (PIR), a night flag
-  from the clock, and an energy-saver switch — exactly the four inputs on the
-  app's control panel (temperature slider + Occupied / Night / Energy saver
-  tick-boxes).
-- **RL environment model** (`src/reinforcement_learning/env.py`): discrete
-  states 0–5 from cold to the comfort goal, two actions (cooler up / cooler
-  down), shaped reward peaking at the goal (1.8) and falling with distance —
-  a thermostat setpoint-tracking simulation.
-- **Data shapes** (`src/data_driven/generator.py`): supervised triples
-  `[i, i+1, i%2]`, unsupervised pairs `[i, i²]`, cleaned (`None` dropped) and
-  transformed (numeric squaring, applied recursively inside rows) by
-  `src/data_driven/pipeline.py`.
+The main objectives are:
 
-**Preparation applied in the app.** Sliders clamp every input (temperature
-10–35, RL episodes 1–20, data points 3–20); the pipeline drops `None` entries;
-presets bundle valid configurations. Nothing the GUI accepts can crash a module.
+- maintaining human comfort;
+- avoiding unnecessary energy use; and
+- applying basic safety and operating rules.
 
-## Task 2 — Build and apply an appropriate method (5)
+Using one common room scenario allows the fuzzy, FOPL, and reinforcement-learning methods to be compared under related conditions.
 
-### P1 — Fuzzy logic AC control (`src/fuzzy_logic/`)
+## 1.2 Information and Assumptions
 
-Triangular membership centred at 22°C (`_triangle(18, 22, 26)` for
-"comfortable", ramped "cold"/"hot" sides). `evaluate()` takes the strongest
-membership and returns an action. Verified in the app:
+The fuzzy controller uses temperature as its primary input and divides the room condition into cold, comfortable, and hot regions. The comfortable region is centred around 22°C.
 
-| Input | Membership winner | Action |
+The FOPL policy uses crisp conditions such as **Hot, Cold, Occupied, Night,** and **EnergySaver**. An extreme-temperature condition is treated as a safety case.
+
+For reinforcement learning, the room is represented as a small discrete thermostat environment. States represent different temperature conditions, while actions represent moving the control toward a cooler or warmer setpoint. The reward is higher when the agent reaches the desired comfort state and lower when it remains far from that state.
+
+The data-driven extension generates small supervised and unsupervised datasets and applies cleaning and transformation before visualization.
+
+## 1.3 Data Preparation
+
+The GUI validates user-controlled ranges such as temperature, RL episode count, and data-point count. The data pipeline removes invalid `None` entries and applies numerical transformations.
+
+The selected room assumptions are kept consistent across the AI modules so that their outputs can be demonstrated and discussed as parts of one smart-room system.
+
+---
+
+# Task 2 — Build and Apply an Appropriate Method (5 Marks)
+
+## 2.1 Fuzzy Logic-Based AC Control
+
+The fuzzy module is implemented in `src/fuzzy_logic/`. It uses triangular membership functions for **cold, comfortable,** and **hot** temperature conditions. The comfortable membership is centred at approximately 22°C.
+
+The controller evaluates the temperature and selects the strongest membership condition to produce an AC control action.
+
+| Input Temperature | Fuzzy Condition | Action |
 |---|---|---|
-| 16°C | cold | Increase Temperature |
-| 22°C | comfortable | Maintain Temperature |
-| 30°C | hot | Decrease Temperature |
+| 16°C | Cold | Increase Temperature |
+| 22°C | Comfortable | Maintain Temperature |
+| 30°C | Hot | Decrease Temperature |
 
-The GUI draws the live membership field with the input marker, so vagueness
-("rather warm", 23.5°C) is visible, not just the final label.
+The fuzzy approach is appropriate because room temperature is continuous. A temperature near a boundary does not always need to be treated as completely cold or completely hot. Membership functions provide a smoother representation of these conditions.
 
-### P2 — FOPL smart-room advisor (`src/fopl/`)
+## 2.2 First-Order Predicate Logic Smart-Room Advisor
 
-A genuine first-order kernel (`knowledge_base.py`: variables, atoms with
-negation, Horn-style rules, grounding over constants, forward chaining to a
-fixpoint with negation-as-failure under a closed-world assumption) plus a
-**13-rule** room policy (`advisor.py`), e.g.
-`∀r. Hot(r) ∧ Occupied(r) ∧ ¬EnergySaver(r) → AC_HIGH(r)`.
+The FOPL implementation is located in `src/fopl/`. It represents facts, predicates, variables, rules, and conclusions and applies forward chaining over the room knowledge base.
 
-The GUI's **Logic Advisor** section asserts the sensor facts per run and shows
-every conclusion with an **agreement lamp** against the fuzzy verdict:
+A representative policy rule is:
 
-| Situation (verified) | Conclusions |
+**Hot(r) AND Occupied(r) AND NOT EnergySaver(r) → AC_HIGH(r)**
+
+Other rules handle energy-saving operation, empty-room shutdown, heating, night operation, lighting, blinds, and safety conditions.
+
+Example conclusions include:
+
+| Room Condition | Example FOPL Conclusion |
 |---|---|
-| 32°C, occupied | `AC_HIGH(R1)` |
-| 32°C, occupied, saver on | `AC_ECO(R1)` instead — policy caps cooling |
-| 32°C, empty | `AC_OFF(R1), BLINDS_DOWN(R1), LIGHTS_OFF(R1)` |
-| 16°C, occupied | `HEATER_ON(R1)` |
-| Comfort + night + occupied | `AC_STANDBY(R1)` + dimmed lighting |
+| Hot + Occupied | AC_HIGH |
+| Hot + Occupied + Energy Saver | AC_ECO |
+| Hot + Empty | AC_OFF and energy-saving actions |
+| Cold + Occupied | HEATER_ON |
+| Comfortable + Night + Occupied | AC_STANDBY |
 
-Safety override: `ExtremeHeat ≥ 33°C → ALERT_OVERHEAT`.
+The FOPL method is appropriate because it provides explicit and explainable policy reasoning. A conclusion can be associated with a logical rule rather than being presented as an unexplained output.
 
-### P3 — Reinforcement learning (`src/reinforcement_learning/`)
+## 2.3 Reinforcement Learning Thermostat
 
-Q-table agent (`agent.py`), the thermostat environment above, and a trainer
-that runs N episodes (GUI slider). The reward chart plots reward per episode
-with the **best episode marked**, plus live stats (episodes / best / average /
-latest). Real-world reading: the same loop schedules smart-thermostat
-setpoints; the curve visibly plateaus, showing diminishing returns from extra
-training. Presets vary the episode count (5/8/12) to make this comparable.
+The reinforcement-learning module is implemented in `src/reinforcement_learning/`. It contains a discrete environment, a Q-table based agent, and a trainer.
 
-### P4 — Data-driven method (`src/data_driven/`)
+The environment represents thermostat control using discrete states and two control actions. The agent learns action values through repeated episodes. The reward function encourages the agent to reach and remain near the desired comfort state.
 
-Both modes: supervised vs unsupervised generation, clean/transform pipeline,
-JSON save/load. The chart plots transformed values with live stats
-(`n/min/max/mean`), and the two methods visibly differ in shape — labelled
-data behaves predictably, unlabelled data needs inspection. Real-world
-reading: synthetic sensor-data augmentation when labelled data is scarce.
+The GUI allows the number of training episodes to be changed. The result is shown as a reward-per-episode chart with best, average, and latest reward statistics.
 
-**Integration.** One `Run System` executes all four modules; Cold/Normal/Hot
-presets reconfigure temperature + episodes + points together; dark/light mode,
-animated sky, and one-click **Export** (charts + `summary.txt` +
-`logic_inference.txt` zipped as `AI-Systems-Report-<timestamp>.zip`) round out
-the demo. `pytest`: 27 collected, 26 passing, 1 display-dependent GUI smoke
-test (skipped on headless/Windows runners by its own rule).
+This method is appropriate for a control problem because the agent learns a policy through interaction with an environment and feedback from rewards.
 
-## Task 3 — Analyze, present findings on real-world use cases (5)
+## 2.4 Data-Driven Extension
 
-All observations below were reproduced in the app:
+The data-driven module in `src/data_driven/` is included as an extension. It provides supervised and unsupervised data generation, cleaning, transformation, and JSON-compatible data handling.
 
-| Observation (from the app) | Real-world meaning |
-|---|---|
-| 32°C + occupied → `AC_HIGH`; tick saver → `AC_ECO` | Comfort-vs-energy tradeoff, switchable at runtime |
-| 32°C + empty → `AC_OFF, BLINDS_DOWN, LIGHTS_OFF` | Biggest saving is not cooling empty rooms — occupancy sensing pays off |
-| Cold + occupied → `HEATER_ON`; empty → `HEATER_OFF` | Same policy mirrored for heating season |
-| Warm empty daytime → `WINDOWS_OPEN` | Free cooling beats the compressor in shoulder weather |
-| Fuzzy Decrease + empty room → lamp shows DIFFERS | Temp-only control assumes occupancy; the policy knows better — sensor fusion matters |
-| RL reward curve rises then plateaus; best episode marked | Thermostat agent converges; extra episodes give diminishing returns |
-| Supervised vs unsupervised charts differ in shape | Labelled pipelines are predictable; unlabelled output needs inspection |
+It supports experimentation and demonstrates how prepared data can be used as part of an AI development workflow. It is not counted as one of the three required problems for this report.
 
-**Cross-method finding:** fuzzy gives *smooth* control, FOPL gives *explainable*
-policy (every action cites its rule), RL gives *adaptive* behaviour, data-driven
-gives *test data*. Together they form a realistic smart-building stack: FOPL
-policy as the safety wrapper, fuzzy/RL for actuation, synthetic data for testing.
+---
 
-## Task 4 — Present your solution, submit report and answer queries (5)
+# 3. System Integration
 
-**60-second demo.** Open `dist/AISystemsProject.exe` → press `Run System` →
-point at the three charts → press `Hot 30°C` (fuzzy flips to Decrease, weather
-sky turns sunny) → untick `Occupied` (policy drops to `AC_OFF…`, lamp flips to
-DIFFERS) → press `Export` and show the zip as submission evidence.
+The GUI integrates the three assessed AI methods into one workflow:
 
-**Likely questions (with answers).**
+```text
+Temperature / Room Conditions
+          ↓
+   Fuzzy Logic Controller
+          ↓
+   FOPL Smart-Room Policy
+          ↓
+ Reinforcement Learning
+          ↓
+Integrated Results and Visualizations
+```
 
-- *Why both fuzzy and FOPL?* Fuzzy handles vagueness ("rather warm"); FOPL
-  handles crisp policy and safety with explanations. Demo: 23.5°C vs the
-  agreement lamp.
-- *What does ¬ mean? Open or closed world?* Negation-as-failure: ¬P holds when
-  P cannot be derived. We assume a closed room with known sensors, stated as a
-  limitation in Task 1.
-- *Does RL guarantee optimal control?* No — it converges empirically here
-  (plateau + best marker); in deployment the FOPL safety rules bound it.
-- *Where is AI "generated" from data?* P4 pipeline: generator → clean →
-  transform; outputs feed the chart, the stats, and reusable JSON training data.
-- *Originality?* All code, rules, thresholds and UI were written for this
-  course; git history documents authorship; 27 tests prove the behaviour.
+The interface also includes:
 
-**Submission contents.**
+- Cold / Normal / Hot presets;
+- Reset controls;
+- dark and light themes;
+- rounded modern controls;
+- animated visual elements;
+- live module-status indicators;
+- an AI decision timeline;
+- RL reward statistics;
+- Auto Mode; and
+- report export.
 
-- This report (`docs/PROJECT_REPORT.docx` + `.md` source).
-- `AI-Systems-Report-<timestamp>.zip` from the app's Export button (charts +
-  summary + logic trace).
-- Code at `github.com/TheKIAR/AC-Control-AI-Systems-Project`.
+The methods remain separate modules so that each technique can be tested independently while still being demonstrated through one application.
 
-## Files mapping to marks
+---
 
-- Task 1: this report §1 + `src/common/config.py` + GUI input clamps.
-- Task 2: `src/fuzzy_logic/`, `src/fopl/`, `src/reinforcement_learning/`,
-  `src/data_driven/`, `src/main.py`, `tests/`.
-- Task 3: table above; reproduce via presets + toggles + `outputs/`.
-- Task 4: demo script above; viva answers above.
+# Task 3 — Analyze and Present Findings on Real-World Use Cases (5 Marks)
+
+## 3.1 Fuzzy Control Finding
+
+The fuzzy controller produces different AC actions for cold, comfortable, and hot temperatures.
+
+Its main advantage in this project is the ability to represent gradual temperature conditions instead of depending only on rigid threshold decisions.
+
+For example, a temperature near the comfortable region can be represented through membership rather than forcing an immediate binary cold/hot classification.
+
+## 3.2 FOPL Finding
+
+The FOPL advisor can incorporate information beyond temperature.
+
+For example:
+
+- an empty room can cause cooling and other unnecessary loads to be turned off;
+- EnergySaver can change the policy from high cooling to economy cooling; and
+- night and occupancy conditions can change the operating policy.
+
+This demonstrates why logical rules are useful when safety, occupancy, energy policy, and explainability are important.
+
+## 3.3 Reinforcement Learning Finding
+
+The RL reward chart shows how the learned policy changes over training episodes.
+
+The best, average, and latest reward statistics help explain the training behaviour and whether additional episodes are producing meaningful improvement.
+
+The result is an educational thermostat simulation. It is **not** claimed to be a production HVAC controller.
+
+## 3.4 Cross-Method Analysis
+
+The three assessed methods solve different aspects of the same smart-room problem:
+
+- **Fuzzy logic** is useful for gradual or uncertain temperature conditions.
+- **FOPL** is useful for explicit rules, constraints, safety, and explanations.
+- **Reinforcement learning** is useful for learning a control policy from interaction and reward.
+
+The combined demonstration shows that different AI techniques can complement one another rather than replacing one another.
+
+## 3.5 Limitations
+
+The project is a software simulation and does not directly control physical HVAC hardware.
+
+The main limitations are:
+
+1. Sensor readings are simulated through GUI inputs.
+2. The RL environment is simplified.
+3. The fuzzy controller uses a limited set of temperature memberships.
+4. Real buildings have additional variables such as humidity, outdoor temperature, air flow, equipment efficiency, and electricity pricing.
+5. Physical deployment would require hardware integration, safety validation, and testing with real sensor data.
+
+Therefore, the project demonstrates the AI methods and their real-world reasoning patterns rather than claiming measured energy savings from a physical building.
+
+---
+
+# Task 4 — Present the Solution, Submit Project Report and Answer Query (5 Marks)
+
+## 4.1 Demonstration Procedure
+
+1. Start the application using `python run_gui.py`.
+2. Show the default room condition.
+3. Change the temperature to 16°C, 22°C, and 30°C and show the fuzzy decisions.
+4. Change Occupied and Energy Saver settings and show the FOPL conclusions.
+5. Run reinforcement-learning training and show the reward chart and statistics.
+6. Use Auto Mode for an integrated live demonstration if required.
+7. Use Export Report to generate the available charts and inference evidence.
+8. Explain how each result relates to its corresponding AI method.
+
+## 4.2 Viva Questions and Answers
+
+**Q: Why did you use fuzzy logic for AC control?**  
+A: Temperature is a continuous variable and a room can be partly cold, comfortable, or hot near a boundary. Fuzzy membership represents this gradual behaviour.
+
+**Q: Why is FOPL useful in the same project?**  
+A: FOPL provides explicit rules and explainable conclusions. It can combine temperature with occupancy, night mode, and energy-saving conditions.
+
+**Q: What is the role of reinforcement learning?**  
+A: RL learns a control policy from interaction with a simplified thermostat environment and reward feedback.
+
+**Q: Does the RL result guarantee an optimal real-world AC controller?**  
+A: No. The project demonstrates learning in a simplified educational environment. A real HVAC system would require richer state information, physical modelling, safety constraints, and validation.
+
+**Q: What is the real-world use case?**  
+A: Smart-room or smart-building control, where temperature, occupancy, operating mode, and energy policy can influence AC and room decisions.
+
+**Q: Why are three methods used instead of only one?**  
+A: The course permits any three problems, and the selected methods demonstrate three different AI paradigms: fuzzy reasoning, symbolic logical reasoning, and reinforcement learning.
+
+---
+
+# 5. Originality and Academic Integrity
+
+The implementation, rule design, GUI integration, experiments, and documentation are prepared for this course project.
+
+The repository contains the source code and test structure used to demonstrate the work. External concepts such as fuzzy logic, FOPL, and reinforcement learning are used as academic methods, while the project-specific room rules, software structure, interface, and integration are part of this implementation.
+
+No student work is intentionally copied.
+
+---
+
+# 6. Conclusion
+
+This project demonstrates three required AI problem types through one coherent smart-room scenario.
+
+The fuzzy system controls AC behaviour from temperature, the FOPL advisor applies explicit room policies, and the reinforcement-learning agent learns thermostat control through reward.
+
+A data-driven extension supports experimentation and AI-data preparation.
+
+The final GUI brings the components together so that the methods, results, and reasoning can be demonstrated during the project presentation and viva.
+
+---
+
+# 7. Project File Mapping
+
+### Fuzzy Logic
+- `src/fuzzy_logic/fuzzy_system.py`
+- `src/fuzzy_logic/rules.py`
+
+### FOPL
+- `src/fopl/knowledge_base.py`
+- `src/fopl/advisor.py`
+
+### Reinforcement Learning
+- `src/reinforcement_learning/env.py`
+- `src/reinforcement_learning/agent.py`
+- `src/reinforcement_learning/trainer.py`
+
+### Data-Driven Extension
+- `src/data_driven/generator.py`
+- `src/data_driven/pipeline.py`
+
+### GUI and Integration
+- `src/main.py`
+- `run_gui.py`
+
+### Tests
+- `tests/`
+
+---
+
+# 8. Assessment Rubric Mapping
+
+| Course Task | Report Section | Marks |
+|---|---|---:|
+| 1. Collect and prepare information required | Task 1 | 5 |
+| 2. Build and apply an appropriate method | Task 2 | 5 |
+| 3. Analyze and present findings on real-world use cases | Task 3 | 5 |
+| 4. Present solution, submit report and answer query | Task 4 | 5 |
+
+**Course:** CSE-334, Project  
+**Total project marks specified in the brief:** 60  
+**Submission deadline specified in the brief:** 24 September 2026
