@@ -31,6 +31,7 @@ except Exception:
 
 try:
     from fuzzy_logic.fuzzy_system import FuzzySystem
+    from fopl.advisor import build_advisor
     from reinforcement_learning.agent import RLAgent
     from reinforcement_learning.env import RLEnvironment
     from reinforcement_learning.trainer import RLTrainer
@@ -38,6 +39,7 @@ try:
     from data_driven.pipeline import DataPipeline
 except ImportError:
     from src.fuzzy_logic.fuzzy_system import FuzzySystem
+    from src.fopl.advisor import build_advisor
     from src.reinforcement_learning.agent import RLAgent
     from src.reinforcement_learning.env import RLEnvironment
     from src.reinforcement_learning.trainer import RLTrainer
@@ -216,6 +218,14 @@ class DemoApp(tk.Tk):
         self.data_count_var = tk.IntVar(value=5)
         self.method_var = tk.StringVar(value="supervised")
         self.preset_var = tk.StringVar(value="CUSTOM")
+        self.occupied_var = tk.BooleanVar(value=True)
+        self.night_var = tk.BooleanVar(value=False)
+        self.saver_var = tk.BooleanVar(value=False)
+        self.data_stats_var = tk.StringVar(value="")
+        self.agree_var = tk.StringVar(value="")
+        self.fopl_box = None
+        self.agree_lamp = None
+        self._splash = None
         self.status_var = tk.StringVar(value="SYSTEM READY")
         self.fuzzy_result_var = tk.StringVar(value="")
         self.telemetry_var = tk.StringVar(value="")
@@ -238,9 +248,58 @@ class DemoApp(tk.Tk):
 
         self._build_ui()
         self._bind_keyboard()
+        self._show_splash()
         self._refresh_all()
+        self._hide_splash()
         tk.Misc.lower(self._frame_canvas)
         self._start_frame_animation()
+
+    def _show_splash(self):
+        # Brief loading cover while the first full refresh (RL training +
+        # figure rendering) runs, so the exe doesn't look dead on launch.
+        try:
+            self.withdraw()
+        except Exception:
+            pass
+        try:
+            splash = tk.Toplevel(self)
+            splash.title("AI Control System")
+            splash.configure(bg=self.BG)
+            splash.overrideredirect(True)
+            w, h = 360, 150
+            try:
+                x = (splash.winfo_screenwidth() - w) // 2
+                y = (splash.winfo_screenheight() - h) // 2
+                splash.geometry(f"{w}x{h}+{x}+{y}")
+            except Exception:
+                splash.geometry(f"{w}x{h}")
+            tk.Label(splash, text="AI CONTROL", bg=self.BG, fg=self.TEXT,
+                     font=("Segoe UI", 18, "bold")).pack(pady=(26, 2))
+            tk.Label(splash, text="warming up the modules…", bg=self.BG, fg=self.MUTED,
+                     font=("Segoe UI", 9)).pack(pady=(0, 14))
+            bar = ttk.Progressbar(splash, mode="indeterminate", length=260)
+            bar.pack()
+            try:
+                bar.start(12)
+            except Exception:
+                pass
+            self._splash = splash
+            self.update_idletasks()
+            self.update()
+        except Exception:
+            self._splash = None
+
+    def _hide_splash(self):
+        try:
+            if self._splash is not None:
+                self._splash.destroy()
+        except Exception:
+            pass
+        self._splash = None
+        try:
+            self.deiconify()
+        except Exception:
+            pass
 
     def _configure_styles(self):
         self.style.configure("Root.TFrame", background=self.BG)
@@ -603,6 +662,11 @@ class DemoApp(tk.Tk):
             bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
             width=88, height=40, radius=16
         ).pack(side="left", padx=(10, 0))
+        RoundedButton(
+            action_row, text="Export", command=self.export_report,
+            bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
+            width=88, height=40, radius=16
+        ).pack(side="left", padx=(10, 0))
         tk.Label(
             action_row, textvariable=self.fuzzy_result_var,
             bg=self.PANEL, fg=self.ACCENT,
@@ -646,6 +710,7 @@ class DemoApp(tk.Tk):
         self.output_grid.grid_rowconfigure(0, weight=3)
         self.output_grid.grid_rowconfigure(1, weight=1)
         self.output_grid.grid_rowconfigure(2, weight=1)
+        self.output_grid.grid_rowconfigure(3, weight=1)
 
         self.fuzzy_card = self._create_output_card(
             0, 0, "Fuzzy Temperature", "Live", self.BLUE
@@ -656,10 +721,41 @@ class DemoApp(tk.Tk):
         self.data_card = self._create_output_card(
             2, 0, "Data Processing", "Processed Data", self.GREEN
         )
+        self.fopl_card = self._create_output_card(
+            3, 0, "Logic Advisor", "FOPL Rules", self.ACCENT
+        )
 
         self.fuzzy_chart = self._chart_host(self.fuzzy_card)
         self.rl_chart = self._chart_host(self.rl_card)
         self.data_chart = self._chart_host(self.data_card)
+
+        tk.Label(self.data_card, textvariable=self.data_stats_var,
+                 bg=self.CARD, fg=self.MUTED, font=("Consolas", 8),
+                 anchor="w", justify="left").pack(fill="x", padx=18, pady=(0, 10))
+
+        toggle_row = tk.Frame(self.fopl_card, bg=self.CARD)
+        toggle_row.pack(fill="x", padx=18, pady=(4, 2))
+        for text, var in (("Occupied", self.occupied_var),
+                          ("Night", self.night_var),
+                          ("Energy saver", self.saver_var)):
+            tk.Checkbutton(toggle_row, text=text, variable=var,
+                           command=self._refresh_fopl,
+                           bg=self.CARD, fg=self.TEXT,
+                           selectcolor=self.CARD_2,
+                           activebackground=self.CARD,
+                           activeforeground=self.TEXT,
+                           font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 16))
+
+        self.fopl_box = tk.Label(self.fopl_card, text="",
+                                 bg=self.CARD, fg=self.TEXT,
+                                 font=("Consolas", 9, "bold"),
+                                 anchor="w", justify="left")
+        self.fopl_box.pack(fill="x", padx=18, pady=(2, 0))
+        self.agree_lamp = tk.Label(self.fopl_card, textvariable=self.agree_var,
+                                   bg=self.CARD, fg=self.GREEN,
+                                   font=("Consolas", 9, "bold"),
+                                   anchor="w", justify="left")
+        self.agree_lamp.pack(fill="x", padx=18, pady=(2, 10))
         self._reset_chart_slots()
         self._start_pulse()
         self._schedule_weather_cycle()
@@ -1271,7 +1367,8 @@ class DemoApp(tk.Tk):
         except Exception:
             pass
 
-    def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent):
+    def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent,
+                         mark_best=False):
         # Persistent figure per chart: replot into the same axes instead of
         # destroying the widget, so refreshes never flash or jump.
         if parent is self.rl_chart:
@@ -1308,6 +1405,13 @@ class DemoApp(tk.Tk):
             marker="o", markersize=4
         )
         ax.fill_between(x_values, y_values, 0, color=accent, alpha=0.08)
+        if mark_best and len(y_values) >= 1:
+            # White ring + accent dot on the peak episode.
+            best_i = max(range(len(y_values)), key=lambda i: y_values[i])
+            ax.scatter([x_values[best_i]], [y_values[best_i]],
+                       color="#ffffff", s=80, zorder=5)
+            ax.scatter([x_values[best_i]], [y_values[best_i]],
+                       color=accent, s=38, zorder=6)
         ax.set_title(title, color=self.TEXT, fontsize=10, loc="left", pad=10)
         ax.set_xlabel(x_label, color=self.MUTED, fontsize=8)
         ax.set_ylabel(y_label, color=self.MUTED, fontsize=8)
@@ -1325,6 +1429,48 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
+    def _refresh_fopl(self):
+        # Live FOPL verdict from the current temperature + room toggles.
+        # Never raises: a broken advisor must not take down the fuzzy view.
+        try:
+            temperature = int(self.temp_var.get())
+        except Exception:
+            temperature = 22
+        try:
+            advisor = build_advisor(
+                temperature,
+                occupied=bool(self.occupied_var.get()),
+                night=bool(self.night_var.get()),
+                energy_saver=bool(self.saver_var.get()),
+            )
+        except Exception as exc:
+            if self.fopl_box is not None:
+                self.fopl_box.configure(text=f"advisor error: {exc}")
+            return
+        conclusions = advisor.get("conclusions", [])
+        band = advisor.get("band", "?")
+        if self.fopl_box is not None:
+            self.fopl_box.configure(
+                text=f"BAND {band}  //  " + ("  ·  ".join(conclusions) if conclusions else "no actions")
+            )
+        # Agreement lamp: does the vague fuzzy verdict match the crisp policy?
+        try:
+            fuzzy_result = FuzzySystem().evaluate(temperature)
+        except Exception:
+            fuzzy_result = ""
+        text = "  ·  ".join(conclusions)
+        if fuzzy_result == "Decrease Temperature":
+            ok, what = ("AC_HIGH" in text or "AC_ECO" in text), "COOLING"
+        elif fuzzy_result == "Increase Temperature":
+            ok, what = ("HEATER_ON" in text), "HEATING"
+        else:
+            ok = ("AC_STANDBY" in text or "AC_OFF" in text
+                  or "HEATER_OFF" in text or not conclusions)
+            what = "HOLD"
+        self.agree_var.set(f"{'● AGREE' if ok else '● DIFFERS'}  //  FUZZY {what} vs POLICY")
+        if self.agree_lamp is not None:
+            self.agree_lamp.configure(fg=self.GREEN if ok else "#e0a02e")
+
     def _render_all(self, result):
         self._last_result = result
         self._draw_fuzzy(result["temperature"])
@@ -1332,7 +1478,8 @@ class DemoApp(tk.Tk):
         rewards = result.get("rl_rewards", []) or [0.0]
         self._draw_line_chart(
             self.rl_chart, list(range(1, len(rewards) + 1)), rewards,
-            "Reward by episode", "Episode", "Reward", self.ACCENT_2
+            "Reward by episode", "Episode", "Reward", self.ACCENT_2,
+            mark_best=True
         )
 
         y_values = normalize_values(result.get("processed_data", []))
@@ -1340,6 +1487,18 @@ class DemoApp(tk.Tk):
             self.data_chart, list(range(1, len(y_values) + 1)), y_values,
             "Processed data stream", "Sample", "Value", self.GREEN
         )
+        try:
+            lo, hi = min(y_values), max(y_values)
+            mean_val = sum(y_values) / len(y_values)
+            self.data_stats_var.set(
+                f"n={len(y_values)}   min={lo:.2f}   max={hi:.2f}   mean={mean_val:.2f}"
+            )
+        except Exception:
+            pass
+        try:
+            self._refresh_fopl()
+        except Exception:
+            pass
 
     def _update_fuzzy_only(self, animate=True):
         temperature = int(self.temp_var.get())
@@ -1352,6 +1511,10 @@ class DemoApp(tk.Tk):
         else:
             self._draw_fuzzy(temperature)
         self._last_temp = temperature
+        try:
+            self._refresh_fopl()
+        except Exception:
+            pass
         self.status_var.set("FUZZY FIELD LIVE")
 
     def _on_temperature_changed(self, *_):
@@ -1435,6 +1598,100 @@ class DemoApp(tk.Tk):
         self.method_var.set("supervised")
         self.preset_var.set("Normal 22°C")
         self._refresh_all()
+
+    @staticmethod
+    def _outputs_dir():
+        # Next to the project in dev, next to the exe when frozen.
+        if getattr(sys, "frozen", False):
+            return Path(sys.executable).resolve().parent / "outputs"
+        return Path(__file__).resolve().parent.parent / "outputs"
+
+    def export_report(self):
+        import zipfile
+        from datetime import datetime
+        try:
+            out = self._outputs_dir()
+            out.mkdir(parents=True, exist_ok=True)
+            try:
+                temperature = int(self.temp_var.get())
+                episodes = int(self.rl_var.get())
+                points = int(self.data_count_var.get())
+            except Exception:
+                temperature, episodes, points = 22, 5, 5
+            method = self.method_var.get()
+            result = getattr(self, "_last_result", None) or {}
+            rewards = result.get("rl_rewards", []) or [0.0]
+            y_values = normalize_values(result.get("processed_data", []))
+
+            files = []
+            for name, fig in (("fuzzy_system.png", getattr(self, "_fuzzy_fig", None)),
+                              ("reinforcement_learning.png", getattr(self, "_rl_fig", None)),
+                              ("data_pipeline.png", getattr(self, "_data_fig", None))):
+                if fig is not None:
+                    path = out / name
+                    try:
+                        fig.savefig(path)
+                        files.append(path)
+                    except Exception:
+                        pass
+
+            lo, hi = min(y_values), max(y_values)
+            mean_val = sum(y_values) / len(y_values)
+            summary = out / "summary.txt"
+            summary.write_text(
+                "AI Systems Project Summary\n"
+                "========================\n"
+                f"Fuzzy result: {result.get('fuzzy_result', '?')}\n"
+                f"Temperature: {temperature}C\n"
+                f"RL episodes: {episodes} (best reward {max(rewards):.2f})\n"
+                f"Data points: {points} ({method})\n"
+                f"Pipeline min: {lo:.2f}, max: {hi:.2f}, mean: {mean_val:.2f}\n",
+                encoding="utf-8",
+            )
+            files.append(summary)
+
+            try:
+                advisor = build_advisor(
+                    temperature,
+                    occupied=bool(self.occupied_var.get()),
+                    night=bool(self.night_var.get()),
+                    energy_saver=bool(self.saver_var.get()),
+                )
+                lines = [
+                    "Smart-Room FOPL Advisor",
+                    "=======================",
+                    f"Input: {float(temperature):.1f}C ({advisor.get('band', '?')}), "
+                    f"occupied={self.occupied_var.get()}, night={self.night_var.get()}, "
+                    f"energy_saver={self.saver_var.get()}",
+                    "",
+                    "Facts:",
+                    *[f"  {f}" for f in advisor.get("facts", [])],
+                    "",
+                    "Conclusions:",
+                    *[f"  {c}" for c in advisor.get("conclusions", [])],
+                    "",
+                    "Fired rules:",
+                    *[f"  {line}" for line in advisor.get("fired", [])],
+                ]
+                logic = out / "logic_inference.txt"
+                logic.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                files.append(logic)
+            except Exception:
+                pass
+
+            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            bundle = out / f"AI-Systems-Report-{stamp}.zip"
+            with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as archive:
+                for path in files:
+                    archive.write(path, path.name)
+            self.status_var.set(f"REPORT EXPORTED  //  {bundle.name}")
+            if messagebox is not None:
+                messagebox.showinfo("Export complete",
+                                    f"Saved {bundle.name} in the outputs folder.")
+        except Exception as exc:
+            self.status_var.set(f"EXPORT FAILED  //  {exc}")
+            if messagebox is not None:
+                messagebox.showerror("Export failed", f"{type(exc).__name__}: {exc}")
 
     def _set_error(self, text):
         for host in (self.fuzzy_chart, self.rl_chart, self.data_chart):
