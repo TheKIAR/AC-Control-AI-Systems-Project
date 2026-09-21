@@ -228,7 +228,7 @@ class DemoApp(tk.Tk):
         self._fitted_width = 0
         self._last_result = None
         self._fade_gen = 0
-        self._weather = None
+        self._weather = "sun"
         self._weather_parts = []
         self._weather_job = None
         self._sky_canvas = None
@@ -546,7 +546,7 @@ class DemoApp(tk.Tk):
         # opaque panels, which is why the old one was invisible).
         sky_shell, sky_inner = self._rounded_panel(body, bg=self.BG, radius=18)
         sky_shell.pack(fill="x", pady=(0, 14))
-        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=96,
+        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=150,
                                      highlightthickness=0, bd=0)
         self._sky_canvas.pack(fill="x")
 
@@ -785,7 +785,7 @@ class DemoApp(tk.Tk):
 
         self._frame_phase += 1
 
-    def _schedule_weather_cycle(self, delay_ms=9000):
+    def _schedule_weather_cycle(self, delay_ms=5000):
         if getattr(self, "_weather_job", None) is not None:
             try:
                 self.after_cancel(self._weather_job)
@@ -802,43 +802,62 @@ class DemoApp(tk.Tk):
         try:
             if not self.winfo_exists():
                 return
-            choices = [m for m in ("snow", "rain", "sun") if m != self._weather]
+            choices = [m for m in ("snow", "rain", "sun", "leaves", "petals") if m != self._weather]
             self._spawn_weather(random.choice(choices))
         except Exception:
             pass
         finally:
             try:
-                self._weather_job = self.after(9000, self._cycle_weather)
+                self._weather_job = self.after(5000, self._cycle_weather)
             except Exception:
                 pass
 
     def _spawn_weather(self, mode):
         parts = []
         if mode == "snow":
-            for _ in range(36):
+            for _ in range(52):
                 parts.append({
                     "bx": random.random(), "by": random.random(),
-                    "spd": 0.0016 + random.random() * 0.0022,
-                    "sway": 0.008 + random.random() * 0.022,
+                    "spd": 0.0013 + random.random() * 0.0020,
+                    "sway": 0.010 + random.random() * 0.025,
                     "ph": random.random() * 6.28,
                     "r": random.choice((1, 1, 2, 2, 3)),
                     "shade": random.choice(("flake0", "flake0", "flake1", "flake2")),
                 })
         elif mode == "rain":
-            for _ in range(55):
+            for _ in range(72):
                 parts.append({
                     "bx": random.random(), "by": random.random(),
-                    "spd": 0.011 + random.random() * 0.009,
-                    "drift": 0.0012,
-                    "len": 9 + random.random() * 8,
+                    "spd": 0.009 + random.random() * 0.010,
+                    "drift": 0.0015,
+                    "len": 10 + random.random() * 10,
                 })
-        else:  # sun: slow rising golden motes
-            for _ in range(24):
+        elif mode == "sun":
+            for _ in range(30):
                 parts.append({
                     "bx": random.random(), "by": random.random(),
-                    "spd": 0.0012 + random.random() * 0.0018,
+                    "spd": 0.0010 + random.random() * 0.0018,
                     "ph": random.random() * 6.28,
-                    "r": random.choice((1, 2, 2, 3)),
+                    "r": random.choice((1, 1, 2, 2, 3)),
+                })
+        elif mode == "leaves":
+            for _ in range(28):
+                parts.append({
+                    "bx": random.random(), "by": random.random(),
+                    "spd": 0.0020 + random.random() * 0.0030,
+                    "sway": 0.015 + random.random() * 0.025,
+                    "ph": random.random() * 6.28,
+                    "size": random.choice((3, 4, 5)),
+                    "rot": random.random() * 6.28,
+                })
+        else:  # spring petals
+            for _ in range(34):
+                parts.append({
+                    "bx": random.random(), "by": random.random(),
+                    "spd": 0.0014 + random.random() * 0.0024,
+                    "sway": 0.018 + random.random() * 0.025,
+                    "ph": random.random() * 6.28,
+                    "size": random.choice((2, 3, 4)),
                 })
         self._weather = mode
         self._weather_parts = parts
@@ -849,74 +868,130 @@ class DemoApp(tk.Tk):
             temperature = float(self.temp_var.get())
         except Exception:
             temperature = 22.0
-        # Free-running sky: the weather is random and rotates on its own
-        # timer, independent of the room temperature slider.
+
         mode = self._weather
-        if mode not in ("snow", "rain", "sun"):
-            mode = random.choice(("snow", "rain", "sun"))
+        if mode not in ("snow", "rain", "sun", "leaves", "petals"):
+            mode = random.choice(("snow", "rain", "sun", "leaves", "petals"))
             self._spawn_weather(mode)
+
         phase = self._frame_phase
         mid_y = h / 2.0
+
+        # Soft atmospheric bands keep the animation feeling like a background
+        # rather than a particle demo. The palette stays monochrome cyan.
+        if self.theme == "dark":
+            bands = ("#0a171d", "#0b1a21", "#0d1e25", "#10232a", "#12272e")
+            particle = "#62dceb"
+            particle_soft = "#2daabd"
+            muted = "#8fdbe4"
+        else:
+            bands = ("#dff3f6", "#e4f5f7", "#e9f7f9", "#eef9fa", "#f3fbfc")
+            particle = "#079bb3"
+            particle_soft = "#45b7c7"
+            muted = "#3e8f9c"
+
+        band_h = max(1, h / len(bands))
+        for i, band in enumerate(bands):
+            c.create_rectangle(0, i * band_h, w, (i + 1) * band_h + 1,
+                               fill=band, outline="")
+
+        # Slow drifting cloud layer, present in every condition.
+        cloud_y = max(18, h * 0.28)
+        for i in range(3):
+            cx = ((w * (0.18 + i * 0.38) + phase * (0.18 + i * 0.05)) % (w + 170)) - 85
+            cy = cloud_y + math.sin(phase * 0.012 + i) * 5
+            cloud = muted if self.theme == "light" else "#3a7b86"
+            c.create_oval(cx - 48, cy - 10, cx + 30, cy + 14, fill=cloud, outline="")
+            c.create_oval(cx - 18, cy - 23, cx + 42, cy + 15, fill=cloud, outline="")
+            c.create_oval(cx + 18, cy - 8, cx + 70, cy + 14, fill=cloud, outline="")
+
         if mode == "snow":
             shades = {
-                "flake0": "#ffffff", "flake1": "#d7e9f2", "flake2": "#a9c9da",
+                "flake0": "#e8fbff", "flake1": "#bdebf2", "flake2": "#7ed4e1",
             } if self.theme == "dark" else {
-                "flake0": "#5f8ba3", "flake1": "#7fa9c0", "flake2": "#a9c9da",
+                "flake0": "#5f9eaa", "flake1": "#7fb5bf", "flake2": "#9acbd2",
             }
             for p in self._weather_parts:
                 x = ((p["bx"] + p["sway"] * math.sin(phase * 0.05 + p["ph"])) % 1.0) * w
                 y = ((p["by"] + phase * p["spd"]) % 1.0) * h
                 r = p["r"]
-                c.create_oval(x - r, y - r, x + r, y + r,
-                              fill=shades[p["shade"]], outline="")
+                c.create_oval(x-r, y-r, x+r, y+r, fill=shades[p["shade"]], outline="")
         elif mode == "rain":
-            color = self.ACCENT
             for p in self._weather_parts:
                 x = ((p["bx"] + phase * p["drift"]) % 1.0) * w
                 y = ((p["by"] + phase * p["spd"]) % 1.0) * h
                 ln = p["len"]
-                c.create_line(x, y, x - ln * 0.35, y + ln, fill=color, width=1)
-        else:
-            gold, soft = "#f5b942", "#e08a2e"
-            cx, cy = w - 70, mid_y
-            sun_r = min(30.0, mid_y - 8.0)
-            glow = sun_r + 10 + 4 * math.sin(phase * 0.08)
-            c.create_oval(cx - glow, cy - glow, cx + glow, cy + glow,
-                          fill="", outline=gold, width=1)
-            c.create_oval(cx - sun_r, cy - sun_r, cx + sun_r, cy + sun_r,
-                          fill=gold, outline="")
+                c.create_line(x, y, x - ln * 0.30, y + ln,
+                              fill=particle, width=2)
+        elif mode == "sun":
+            cx, cy = w - 76, max(30, mid_y)
+            pulse = 2.5 * math.sin(phase * 0.06)
+            sun_r = min(28.0, max(18.0, mid_y - 10.0))
+            for ring in (12, 7):
+                rr = sun_r + ring + pulse
+                c.create_oval(cx-rr, cy-rr, cx+rr, cy+rr,
+                              outline=particle_soft, width=1)
+            c.create_oval(cx-sun_r, cy-sun_r, cx+sun_r, cy+sun_r,
+                          fill=particle, outline="")
+            for angle in range(0, 360, 45):
+                dx = math.cos(math.radians(angle))
+                dy = math.sin(math.radians(angle))
+                c.create_line(cx+dx*(sun_r+5), cy+dy*(sun_r+5),
+                              cx+dx*(sun_r+12), cy+dy*(sun_r+12),
+                              fill=particle, width=2, capstyle="round")
             for p in self._weather_parts:
-                x = ((p["bx"] + 0.004 * math.sin(phase * 0.04 + p["ph"])) % 1.0) * w
-                y = ((p["by"] - phase * p["spd"]) % 1.0) * h
+                x = ((p["bx"] + 0.006 * math.sin(phase*0.04 + p["ph"])) % 1.0) * w
+                y = ((p["by"] - phase*p["spd"]) % 1.0) * h
                 r = p["r"]
-                c.create_oval(x - r, y - r, x + r, y + r,
-                              fill=soft if int(phase + p["ph"] * 10) % 2 else gold,
-                              outline="")
+                c.create_oval(x-r, y-r, x+r, y+r, fill=particle_soft, outline="")
+        elif mode == "leaves":
+            for p in self._weather_parts:
+                x = ((p["bx"] + p["sway"] * math.sin(phase*0.035 + p["ph"])) % 1.0) * w
+                y = ((p["by"] + phase*p["spd"]) % 1.0) * h
+                s = p["size"]
+                c.create_polygon(
+                    x, y-s, x+s*0.7, y, x, y+s, x-s*0.7, y,
+                    fill=particle_soft, outline=""
+                )
+        else:  # petals
+            for p in self._weather_parts:
+                x = ((p["bx"] + p["sway"] * math.sin(phase*0.03 + p["ph"])) % 1.0) * w
+                y = ((p["by"] - phase*p["spd"]) % 1.0) * h
+                s = p["size"]
+                c.create_oval(x-s, y-s*0.65, x+s, y+s*0.65,
+                              fill=particle_soft, outline="")
 
-        # Condition badge: small canvas-drawn icon + label, left side.
-        badge = {"snow": ("SNOW", "#ffffff" if self.theme == "dark" else "#3d748c"),
-                 "rain": ("RAIN", self.ACCENT),
-                 "sun": ("SUNNY", "#e08a2e")}[mode]
-        label, tint = badge[0], badge[1]
+        labels = {
+            "snow": "WINTER",
+            "rain": "RAIN",
+            "sun": "SUMMER",
+            "leaves": "AUTUMN",
+            "petals": "SPRING",
+        }
+        label = labels[mode]
+
+        # Minimal condition marker and live temperature.
         ix, iy = 34, mid_y
         if mode == "snow":
             for angle in (0, 60, 120):
                 dx = 9 * math.cos(math.radians(angle))
                 dy = 9 * math.sin(math.radians(angle))
-                c.create_line(ix - dx, iy - dy, ix + dx, iy + dy, fill=tint, width=2)
+                c.create_line(ix-dx, iy-dy, ix+dx, iy+dy,
+                              fill=particle, width=2, capstyle="round")
         elif mode == "rain":
             for dx in (-8, 0, 8):
-                c.create_line(ix + dx, iy - 9, ix + dx - 4, iy + 9, fill=tint, width=2)
+                c.create_line(ix+dx, iy-9, ix+dx-4, iy+9,
+                              fill=particle, width=2, capstyle="round")
         else:
-            c.create_oval(ix - 8, iy - 8, ix + 8, iy + 8, fill=tint, outline="")
+            c.create_oval(ix-8, iy-8, ix+8, iy+8, fill=particle, outline="")
             for angle in range(0, 360, 45):
                 dx = 13 * math.cos(math.radians(angle))
                 dy = 13 * math.sin(math.radians(angle))
-                c.create_line(ix + dx * 0.8, iy + dy * 0.8, ix + dx, iy + dy,
-                              fill=tint, width=2)
-        c.create_text(58, mid_y,
-                      text=f"{label}  ·  {temperature:g}°C",
-                      anchor="w", fill=self.TEXT, font=("Consolas", 15, "bold"))
+                c.create_line(ix+dx*0.8, iy+dy*0.8, ix+dx, iy+dy,
+                              fill=particle, width=2, capstyle="round")
+
+        c.create_text(58, mid_y, text=f"{label}  ·  {temperature:g}°C",
+                      anchor="w", fill=self.TEXT, font=("Segoe UI", 14, "bold"))
 
     def _paint_sky(self):
         canvas = getattr(self, "_sky_canvas", None)
@@ -953,7 +1028,7 @@ class DemoApp(tk.Tk):
             self._paint_sky()
         except Exception:
             pass
-        self._frame_job = self.after(25, lambda g=gen: self._animate_frame(g))
+        self._frame_job = self.after(33, lambda g=gen: self._animate_frame(g))
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
