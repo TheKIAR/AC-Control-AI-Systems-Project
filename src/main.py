@@ -615,14 +615,16 @@ class DemoApp(tk.Tk):
             preset_row, text="Presets", bg=self.PANEL, fg=self.MUTED,
             font=("Segoe UI", 9, "bold")
         ).pack(side="left")
-        for text, temp in (
-            ("Cold 16°C", 16),
-            ("Normal 22°C", 22),
-            ("Hot 30°C", 30),
+        # Each preset is a full scenario: temperature + RL episodes +
+        # data points, so one click reconfigures all three AI modules.
+        for text, temp, episodes, points in (
+            ("Cold 16°C", 16, 8, 10),
+            ("Normal 22°C", 22, 5, 5),
+            ("Hot 30°C", 30, 12, 15),
         ):
             RoundedButton(
                 preset_row, text=text,
-                command=lambda t=temp, label=text: self._apply_preset_value(label, t),
+                command=lambda t=temp, e=episodes, p=points, label=text: self._apply_preset_value(label, t, e, p),
                 bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
                 width=116, height=36, radius=14
             ).pack(side="left", padx=(10, 0))
@@ -1359,9 +1361,14 @@ class DemoApp(tk.Tk):
         self.preset_var.set("CUSTOM")
         self.status_var.set("PARAMETER CHANGED  //  RUN SYSTEM TO REFRESH")
 
-    def _apply_preset_value(self, name, temperature):
+    def _apply_preset_value(self, name, temperature, episodes, points):
         self.preset_var.set(name)
         self.temp_var.set(temperature)
+        self.rl_var.set(episodes)
+        self.data_count_var.set(points)
+        # Full refresh (retrains RL + reprocesses data for the new config),
+        # then glide the fuzzy marker for a smooth handover.
+        self._refresh_all()
         self._update_fuzzy_only()
 
     def _animate_temperature(self, start, target):
@@ -1426,7 +1433,7 @@ class DemoApp(tk.Tk):
         self.data_count_var.set(5)
         self._last_temp = 22
         self.method_var.set("supervised")
-        self.preset_var.set("◉  NORMAL 22°")
+        self.preset_var.set("Normal 22°C")
         self._refresh_all()
 
     def _set_error(self, text):
