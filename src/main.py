@@ -734,6 +734,22 @@ class DemoApp(tk.Tk):
         self.agree_lamp.pack(fill="x", pady=(2, 0))
         self.fopl_chart = tk.Frame(advisor_section, bg=self.PANEL)
         self.fopl_chart.pack(fill="x", pady=(6, 0))
+        tk.Label(advisor_section, text="INFERENCE TRACE  —  click a rule bar for its logic",
+                 bg=self.PANEL, fg=self.MUTED, font=("Segoe UI", 8, "bold"),
+                 anchor="w").pack(fill="x", pady=(8, 2))
+        self.fopl_trace = tk.Text(advisor_section, height=5, wrap="word",
+                                  bg=self.CARD, fg=self.TEXT, relief="flat",
+                                  borderwidth=0, highlightthickness=1,
+                                  font=("Consolas", 8))
+        self.fopl_trace.pack(fill="x")
+        self.fopl_trace.configure(state="disabled")
+        self.fopl_detail = tk.Label(advisor_section, text="",
+                                    bg=self.PANEL, fg=self.ACCENT,
+                                    font=("Consolas", 8, "bold"),
+                                    anchor="w", justify="left")
+        self.fopl_detail.pack(fill="x", pady=(4, 0))
+        self._fopl_bar_names = []
+        self._fopl_rules = []
 
         timeline_shell, timeline_inner = self._rounded_panel(body, bg=self.BG, radius=18)
         timeline_shell.pack(fill="x", pady=(0, 16))
@@ -1613,9 +1629,47 @@ class DemoApp(tk.Tk):
             self.agree_lamp.configure(fg=self.GREEN if ok else self.RED)
         try:
             rules = build_rules()
+            self._fopl_rules = rules
             fired = [r.name for r in rules
                      if any(line.startswith(r.name) for line in advisor.get("fired", []))]
             self._draw_fopl_chart([r.name for r in rules], fired)
+            trace_lines = []
+            step_no = 0
+            for line in advisor.get("fired", []):
+                rule = next((r for r in rules if line.startswith(r.name)), None)
+                step_no += 1
+                if rule is not None and rule.description:
+                    trace_lines.append(f"{step_no}. {line}  —  {rule.description}")
+                else:
+                    trace_lines.append(f"{step_no}. {line}")
+            self._set_fopl_trace(trace_lines or ["no rules fired"])
+        except Exception:
+            pass
+
+    def _set_fopl_trace(self, lines):
+        try:
+            self.fopl_trace.configure(state="normal")
+            self.fopl_trace.delete("1.0", "end")
+            self.fopl_trace.insert("1.0", "\n".join(lines))
+            self.fopl_trace.configure(state="disabled")
+        except Exception:
+            pass
+
+    def _on_fopl_pick(self, event):
+        # Clicking a rule bar shows that rule's full IF/THEN logic.
+        try:
+            patches = list(event.canvas.figure.axes[0].patches)
+            idx = patches.index(event.artist)
+            name = self._fopl_bar_names[idx]
+        except Exception:
+            return
+        try:
+            rule = next(r for r in self._fopl_rules if r.name == name)
+            premises = " AND ".join(a.describe() for a in rule.premises)
+            detail = f"{rule.name}:  IF {premises}  THEN {rule.conclusion.describe()}"
+            if rule.description:
+                detail += f"  —  {rule.description}"
+            self.fopl_detail.configure(text=detail)
         except Exception:
             pass
 
@@ -1639,6 +1693,10 @@ class DemoApp(tk.Tk):
             self._fopl_fig, self._fopl_ax = fig, ax
             self._fopl_canvas = self._embed_canvas(fig, parent)
             canvas = self._fopl_canvas
+            try:
+                canvas.mpl_connect("pick_event", self._on_fopl_pick)
+            except Exception:
+                pass
         else:
             fig = self._fopl_fig
             ax = self._fopl_ax
@@ -1651,6 +1709,12 @@ class DemoApp(tk.Tk):
         values = [1.0 if name in fired else 0.12 for name in rule_names]
         colors = [self.GREEN if name in fired else self.BORDER for name in rule_names]
         ax.barh(rule_names, values, color=colors, height=0.55)
+        for patch in ax.patches:
+            try:
+                patch.set_picker(True)
+            except Exception:
+                pass
+        self._fopl_bar_names = list(rule_names)
         ax.set_xlim(0, 1.15)
         ax.set_xticks([])
         ax.set_title("Rule firings", color=self.TEXT, fontsize=10, loc="left", pad=10)
