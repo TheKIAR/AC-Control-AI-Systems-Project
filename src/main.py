@@ -409,7 +409,8 @@ class DemoApp(tk.Tk):
         try:
             notch = (event.delta / 120.0) if getattr(event, "delta", 0) else 0.0
             if notch:
-                self._smooth_scroll_by(notch * 48.0)
+                # Negated: wheel-up (positive delta) must move the view up.
+                self._smooth_scroll_by(-notch * 48.0)
         except Exception:
             pass
 
