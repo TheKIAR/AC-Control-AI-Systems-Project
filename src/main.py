@@ -751,18 +751,6 @@ class DemoApp(tk.Tk):
         self._fopl_bar_names = []
         self._fopl_rules = []
 
-        timeline_shell, timeline_inner = self._rounded_panel(body, bg=self.BG, radius=18)
-        timeline_shell.pack(fill="x", pady=(0, 16))
-        tk.Label(
-            timeline_inner, text="AI DECISION TIMELINE", bg=self.CARD,
-            fg=self.MUTED, font=("Segoe UI", 9, "bold")
-        ).pack(anchor="w", padx=16, pady=(10, 3))
-        tk.Label(
-            timeline_inner, textvariable=self.timeline_var, bg=self.CARD,
-            fg=self.TEXT, font=("Consolas", 9, "bold"),
-            anchor="w", justify="left", wraplength=1120
-        ).pack(fill="x", padx=16, pady=(0, 12))
-
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
         tk.Label(
@@ -807,6 +795,18 @@ class DemoApp(tk.Tk):
         tk.Label(self.data_card, textvariable=self.data_stats_var,
                  bg=self.CARD, fg=self.MUTED, font=("Consolas", 8),
                  anchor="w", justify="left").pack(fill="x", padx=18, pady=(0, 10))
+
+        timeline_shell, timeline_inner = self._rounded_panel(body, bg=self.BG, radius=18)
+        timeline_shell.pack(fill="x", pady=(0, 8))
+        tk.Label(
+            timeline_inner, text="AI DECISION TIMELINE", bg=self.CARD,
+            fg=self.MUTED, font=("Segoe UI", 9, "bold")
+        ).pack(anchor="w", padx=16, pady=(10, 3))
+        tk.Label(
+            timeline_inner, textvariable=self.timeline_var, bg=self.CARD,
+            fg=self.TEXT, font=("Consolas", 9, "bold"),
+            anchor="w", justify="left", wraplength=1120
+        ).pack(fill="x", padx=16, pady=(0, 12))
         self._reset_chart_slots()
         self._start_pulse()
         self._schedule_weather_cycle()
