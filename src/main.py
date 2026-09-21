@@ -125,27 +125,38 @@ class RoundedButton(tk.Canvas):
             self._command()
 
 
-class RoundedPanel(tk.Canvas):
+class RoundedPanel(tk.Frame):
     def __init__(self, master, bg, panel_bg, radius=18, border=None, **kwargs):
-        super().__init__(master, bg=bg, highlightthickness=0, bd=0, **kwargs)
+        super().__init__(master, bg=bg, bd=0, highlightthickness=0, **kwargs)
         self._panel_bg = panel_bg
         self._border = border or panel_bg
         self._radius = radius
-        self.inner = tk.Frame(self, bg=panel_bg, bd=0, highlightthickness=0)
-        self._window = self.create_window((0, 0), window=self.inner, anchor="nw")
-        self.bind("<Configure>", self._resize)
 
-    def _resize(self, event):
-        w, h = max(event.width, 4), max(event.height, 4)
-        self.delete("background")
-        self._draw_background(w, h)
-        self.itemconfigure(self._window, x=2, y=2, width=max(1, w-4), height=max(1, h-4))
+        self._canvas = tk.Canvas(
+            self, bg=bg, highlightthickness=0, bd=0
+        )
+        self._canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-    def _draw_background(self, w, h):
-        r = self._radius
-        _rounded_rect(self, 1, 1, w-1, h-1, r, self._panel_bg, self._border, 1)
-        # Cover the center so child frame does not show square edges beyond the rounded shell.
-        self.tag_raise(self._window)
+        # Inset the content so the background canvas remains visible at
+        # every corner, producing an actual rounded surface.
+        inset = max(8, radius // 2)
+        self.inner = tk.Frame(
+            self, bg=panel_bg, bd=0, highlightthickness=0
+        )
+        self.inner.pack(fill="both", expand=True, padx=inset, pady=inset)
+
+        self.bind("<Configure>", self._redraw)
+
+    def _redraw(self, event=None):
+        w = max(self.winfo_width(), 4)
+        h = max(self.winfo_height(), 4)
+        self._canvas.delete("all")
+        _rounded_rect(
+            self._canvas, 1, 1, w - 1, h - 1,
+            self._radius, self._panel_bg, self._border, 1
+        )
+
+
 
 class DemoApp(tk.Tk):
     BG = "#17181c"
