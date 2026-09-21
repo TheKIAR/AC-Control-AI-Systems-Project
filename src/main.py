@@ -97,8 +97,17 @@ def _rounded_rect(canvas, x1, y1, x2, y2, radius, fill, outline=None, width=1):
 
 
 class RoundedButton(tk.Canvas):
-    def __init__(self, master, text, command, bg, fg, hover, width=120, height=38, radius=14, **kwargs):
-        super().__init__(master, width=width, height=height, bg=master.cget("bg"),
+    def __init__(self, master, text, command, bg, fg, hover, width=120, height=38, radius=14,
+                 parent_bg=None, **kwargs):
+        if parent_bg is None:
+            try:
+                parent_bg = master.cget("bg")
+            except tk.TclError:
+                # ttk containers (e.g. header) have no -bg option; fall
+                # back to the window background so the rounded corners
+                # blend in instead of crashing.
+                parent_bg = master.winfo_toplevel().cget("bg")
+        super().__init__(master, width=width, height=height, bg=parent_bg,
                          highlightthickness=0, bd=0, **kwargs)
         self._text = text
         self._command = command
@@ -237,7 +246,7 @@ class DemoApp(tk.Tk):
         self._build_ui()
         self._bind_keyboard()
         self._refresh_all()
-        self._frame_canvas.lift()
+        tk.Misc.lower(self._frame_canvas)
         self._start_frame_animation()
 
     def _configure_styles(self):
@@ -541,7 +550,11 @@ class DemoApp(tk.Tk):
             self, bg=self.BG, highlightthickness=0, bd=0
         )
         self._frame_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self._frame_canvas.lift()
+        # NOTE: Canvas.lift()/lower() without args hit the canvas-ITEM ops
+        # (need a tag) and crash. Window stacking needs Misc.lower -- and
+        # the frame belongs behind the widgets anyway (it is opaque, so on
+        # top it would cover the whole UI and only its border would show).
+        tk.Misc.lower(self._frame_canvas)
         self._frame_phase = 0
         self.bind("<Configure>", self._resize_frame_animation, add="+")
 
