@@ -142,9 +142,12 @@ class RoundedPanel(tk.Frame):
         self._radius = radius
         self._canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0)
         self._canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self._inset = max(6, radius // 2)
         self.inner = tk.Frame(self, bg=panel_bg, bd=0, highlightthickness=0)
-        self.inner.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self.inner.lift()
+        # NOTE: inner must be packed, not placed. place()d children report
+        # zero requested size, which collapsed every rounded card to 1px and
+        # left the whole window blank. pack() lets the content size the panel.
+        self.inner.pack(fill="both", expand=True, padx=self._inset, pady=self._inset)
         self.bind("<Configure>", self._redraw)
 
     def _redraw(self, event=None):
@@ -154,11 +157,6 @@ class RoundedPanel(tk.Frame):
         _rounded_rect(
             self._canvas, 1, 1, w - 1, h - 1,
             self._radius, self._panel_bg, self._border, 1
-        )
-        # Keep content slightly inset so the square child frame never reaches corners.
-        inset = max(6, self._radius // 2)
-        self.inner.place(
-            x=inset, y=inset, width=max(1, w-2*inset), height=max(1, h-2*inset)
         )
 
 
