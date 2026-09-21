@@ -1710,7 +1710,7 @@ class DemoApp(tk.Tk):
             )
             self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result['fuzzy_result'].upper()}")
             self._render_all(result)
-            self.status_var.set("AUTO SYSTEM ONLINE  //  LIVE" if auto else "SYSTEM ONLINE  //  LIVE")
+            self.status_var.set("AUTO SYSTEM ONLINE  //  LIVE" if auto else "SYSTEM ONLINE  //  LIVE") # type: ignore
         except Exception as exc:
             self.status_var.set("SYSTEM ERROR")
             self._set_error(str(exc))
