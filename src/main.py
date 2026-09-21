@@ -30,14 +30,14 @@ except Exception:
     FIGURE_AVAILABLE = False
 
 try:
-    from fuzzy_logic.fuzzy_system import FuzzySystem, COLD_MAX, COMFORT_MAX
+    from fuzzy_logic.fuzzy_system import FuzzySystem
     from reinforcement_learning.agent import RLAgent
     from reinforcement_learning.env import RLEnvironment
     from reinforcement_learning.trainer import RLTrainer
     from data_driven.generator import DataGenerator
     from data_driven.pipeline import DataPipeline
 except ImportError:
-    from src.fuzzy_logic.fuzzy_system import FuzzySystem, COLD_MAX, COMFORT_MAX
+    from src.fuzzy_logic.fuzzy_system import FuzzySystem
     from src.reinforcement_learning.agent import RLAgent
     from src.reinforcement_learning.env import RLEnvironment
     from src.reinforcement_learning.trainer import RLTrainer
@@ -230,6 +230,7 @@ class DemoApp(tk.Tk):
         self._fade_gen = 0
         self._weather = None
         self._weather_parts = []
+        self._weather_job = None
         self._sky_canvas = None
         self._status_dot = None
         self._last_temp = int(self.temp_var.get())
@@ -339,6 +340,12 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
             self._refit_job = None
+        if getattr(self, "_weather_job", None) is not None:
+            try:
+                self.after_cancel(self._weather_job)
+            except Exception:
+                pass
+            self._weather_job = None
         # Dip the window opacity, rebuild under cover, fade back in: the
         # light/dark swap reads as one smooth transition instead of a pop.
         self._fade_gen = getattr(self, "_fade_gen", 0) + 1
@@ -653,6 +660,7 @@ class DemoApp(tk.Tk):
         self.data_chart = self._chart_host(self.data_card)
         self._reset_chart_slots()
         self._start_pulse()
+        self._schedule_weather_cycle()
 
     @staticmethod
     def _blend(color_a, color_b, t):
@@ -777,15 +785,32 @@ class DemoApp(tk.Tk):
 
         self._frame_phase += 1
 
-    @staticmethod
-    def _weather_for_temp(temperature):
-        # Same 20/24 borders as the fuzzy controller: cold -> snow,
-        # comfort -> rain, warm/hot -> sun.
-        if temperature < COLD_MAX:
-            return "snow"
-        if temperature > COMFORT_MAX:
-            return "sun"
-        return "rain"
+    def _schedule_weather_cycle(self, delay_ms=9000):
+        if getattr(self, "_weather_job", None) is not None:
+            try:
+                self.after_cancel(self._weather_job)
+            except Exception:
+                pass
+            self._weather_job = None
+        try:
+            self._weather_job = self.after(delay_ms, self._cycle_weather)
+        except Exception:
+            pass
+
+    def _cycle_weather(self):
+        self._weather_job = None
+        try:
+            if not self.winfo_exists():
+                return
+            choices = [m for m in ("snow", "rain", "sun") if m != self._weather]
+            self._spawn_weather(random.choice(choices))
+        except Exception:
+            pass
+        finally:
+            try:
+                self._weather_job = self.after(9000, self._cycle_weather)
+            except Exception:
+                pass
 
     def _spawn_weather(self, mode):
         parts = []
@@ -823,9 +848,12 @@ class DemoApp(tk.Tk):
         try:
             temperature = float(self.temp_var.get())
         except Exception:
-            temperature = COMFORT_MAX
-        mode = self._weather_for_temp(temperature)
-        if mode != self._weather:
+            temperature = 22.0
+        # Free-running sky: the weather is random and rotates on its own
+        # timer, independent of the room temperature slider.
+        mode = self._weather
+        if mode not in ("snow", "rain", "sun"):
+            mode = random.choice(("snow", "rain", "sun"))
             self._spawn_weather(mode)
         phase = self._frame_phase
         mid_y = h / 2.0
@@ -1338,7 +1366,8 @@ class DemoApp(tk.Tk):
     def destroy(self):
         self._stop_pulse()
         for job in (getattr(self, "_animation_job", None), getattr(self, "_frame_job", None),
-                    getattr(self, "_scroll_job", None), getattr(self, "_refit_job", None)):
+                    getattr(self, "_scroll_job", None), getattr(self, "_refit_job", None),
+                    getattr(self, "_weather_job", None)):
             if job is not None:
                 try:
                     self.after_cancel(job)
