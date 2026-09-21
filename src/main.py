@@ -186,10 +186,11 @@ class DemoApp(tk.Tk):
     GREEN = "#35cfe5"
     RED = "#79dce8"
     BLUE = "#35cfe5"
+    SKY = "#0b1a2a"
 
     THEMES = {
-        "dark": {"BG":"#0d1117","PANEL":"#151b23","CARD":"#1b2430","CARD_2":"#24303d","BORDER":"#334252","TEXT":"#e8f7fa","MUTED":"#91a8b0","ACCENT":"#35cfe5","ACCENT_2":"#35cfe5","GREEN":"#35cfe5","RED":"#79dce8","BLUE":"#35cfe5"},
-        "light": {"BG":"#edf7f9","PANEL":"#f8fcfd","CARD":"#ffffff","CARD_2":"#e7f3f6","BORDER":"#b9d5db","TEXT":"#18343a","MUTED":"#607d84","ACCENT":"#079bb3","ACCENT_2":"#079bb3","GREEN":"#079bb3","RED":"#3e9cac","BLUE":"#079bb3"},
+        "dark": {"BG":"#0d1117","PANEL":"#151b23","CARD":"#1b2430","CARD_2":"#24303d","BORDER":"#334252","TEXT":"#e8f7fa","MUTED":"#91a8b0","ACCENT":"#35cfe5","ACCENT_2":"#35cfe5","GREEN":"#35cfe5","RED":"#79dce8","BLUE":"#35cfe5","SKY":"#0b1a2a"},
+        "light": {"BG":"#edf7f9","PANEL":"#f8fcfd","CARD":"#ffffff","CARD_2":"#e7f3f6","BORDER":"#b9d5db","TEXT":"#18343a","MUTED":"#607d84","ACCENT":"#079bb3","ACCENT_2":"#079bb3","GREEN":"#079bb3","RED":"#3e9cac","BLUE":"#079bb3","SKY":"#d9edf4"},
     }
 
     def __init__(self):
@@ -229,6 +230,7 @@ class DemoApp(tk.Tk):
         self._fade_gen = 0
         self._weather = None
         self._weather_parts = []
+        self._sky_canvas = None
         self._status_dot = None
         self._last_temp = int(self.temp_var.get())
         self._reset_chart_slots()
@@ -532,6 +534,15 @@ class DemoApp(tk.Tk):
         )
         self.theme_button.pack(side="right", padx=(0, 4))
 
+        # Live sky strip: the weather animation lives here, in plain sight
+        # above the controls (a full-window background would hide behind the
+        # opaque panels, which is why the old one was invisible).
+        sky_shell, sky_inner = self._rounded_panel(body, bg=self.BG, radius=18)
+        sky_shell.pack(fill="x", pady=(0, 14))
+        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=96,
+                                     highlightthickness=0, bd=0)
+        self._sky_canvas.pack(fill="x")
+
         controls_shell, controls = self._rounded_panel(body, bg=self.BG, radius=20)
         controls_shell.pack(fill="x", pady=(0, 18), ipady=4)
 
@@ -726,8 +737,6 @@ class DemoApp(tk.Tk):
         h = max(c.winfo_height(), 2)
         c.delete("all")
 
-        self._paint_weather(c, w, h)
-
         # Static thin border + one clearly moving segment.
         inset = 3
         c.create_rectangle(
@@ -810,6 +819,7 @@ class DemoApp(tk.Tk):
         self._weather_parts = parts
 
     def _paint_weather(self, c, w, h):
+        c.delete("all")
         try:
             temperature = float(self.temp_var.get())
         except Exception:
@@ -818,6 +828,7 @@ class DemoApp(tk.Tk):
         if mode != self._weather:
             self._spawn_weather(mode)
         phase = self._frame_phase
+        mid_y = h / 2.0
         if mode == "snow":
             shades = {
                 "flake0": "#ffffff", "flake1": "#d7e9f2", "flake2": "#a9c9da",
@@ -839,11 +850,13 @@ class DemoApp(tk.Tk):
                 c.create_line(x, y, x - ln * 0.35, y + ln, fill=color, width=1)
         else:
             gold, soft = "#f5b942", "#e08a2e"
-            cx, cy = w - 110, 96
-            glow = 30 + 5 * math.sin(phase * 0.08)
-            c.create_oval(cx - glow - 12, cy - glow - 12, cx + glow + 12, cy + glow + 12,
+            cx, cy = w - 70, mid_y
+            sun_r = min(30.0, mid_y - 8.0)
+            glow = sun_r + 10 + 4 * math.sin(phase * 0.08)
+            c.create_oval(cx - glow, cy - glow, cx + glow, cy + glow,
                           fill="", outline=gold, width=1)
-            c.create_oval(cx - 30, cy - 30, cx + 30, cy + 30, fill=gold, outline="")
+            c.create_oval(cx - sun_r, cy - sun_r, cx + sun_r, cy + sun_r,
+                          fill=gold, outline="")
             for p in self._weather_parts:
                 x = ((p["bx"] + 0.004 * math.sin(phase * 0.04 + p["ph"])) % 1.0) * w
                 y = ((p["by"] - phase * p["spd"]) % 1.0) * h
@@ -851,6 +864,49 @@ class DemoApp(tk.Tk):
                 c.create_oval(x - r, y - r, x + r, y + r,
                               fill=soft if int(phase + p["ph"] * 10) % 2 else gold,
                               outline="")
+
+        # Condition badge: small canvas-drawn icon + label, left side.
+        badge = {"snow": ("SNOW", "#ffffff" if self.theme == "dark" else "#3d748c"),
+                 "rain": ("RAIN", self.ACCENT),
+                 "sun": ("SUNNY", "#e08a2e")}[mode]
+        label, tint = badge[0], badge[1]
+        ix, iy = 34, mid_y
+        if mode == "snow":
+            for angle in (0, 60, 120):
+                dx = 9 * math.cos(math.radians(angle))
+                dy = 9 * math.sin(math.radians(angle))
+                c.create_line(ix - dx, iy - dy, ix + dx, iy + dy, fill=tint, width=2)
+        elif mode == "rain":
+            for dx in (-8, 0, 8):
+                c.create_line(ix + dx, iy - 9, ix + dx - 4, iy + 9, fill=tint, width=2)
+        else:
+            c.create_oval(ix - 8, iy - 8, ix + 8, iy + 8, fill=tint, outline="")
+            for angle in range(0, 360, 45):
+                dx = 13 * math.cos(math.radians(angle))
+                dy = 13 * math.sin(math.radians(angle))
+                c.create_line(ix + dx * 0.8, iy + dy * 0.8, ix + dx, iy + dy,
+                              fill=tint, width=2)
+        c.create_text(58, mid_y,
+                      text=f"{label}  ·  {temperature:g}°C",
+                      anchor="w", fill=self.TEXT, font=("Consolas", 15, "bold"))
+
+    def _paint_sky(self):
+        canvas = getattr(self, "_sky_canvas", None)
+        if canvas is None:
+            return
+        try:
+            if not canvas.winfo_exists():
+                return
+        except Exception:
+            return
+        w = max(canvas.winfo_width(), 2)
+        h = max(canvas.winfo_height(), 2)
+        if w < 10 or h < 10:
+            return
+        try:
+            self._paint_weather(canvas, w, h)
+        except Exception:
+            pass
 
     def _animate_frame(self, gen=None):
         # Single loop only: stale generations (pre-toggle leftovers) exit
@@ -865,6 +921,10 @@ class DemoApp(tk.Tk):
         except Exception:
             self._frame_job = None
             return
+        try:
+            self._paint_sky()
+        except Exception:
+            pass
         self._frame_job = self.after(25, lambda g=gen: self._animate_frame(g))
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
