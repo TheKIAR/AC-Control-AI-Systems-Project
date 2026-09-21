@@ -106,6 +106,37 @@ pytest
 
 The tests cover fuzzy decisions and memberships, reinforcement-learning behavior, data generation/pipeline behavior, FOPL behavior, and visual-output generation.
 
+
+
+## GUI Preview & AI Flow
+
+The desktop interface uses a rounded cyan-monochrome design with dark/light themes, animated weather visuals, live module indicators, and an AI decision timeline.
+
+The main interaction flow is:
+
+```text
+Temperature
+    ↓
+Fuzzy Logic
+    ↓
+FOPL Room Policy
+    ↓
+Reinforcement Learning
+    ↓
+Data Pipeline
+    ↓
+Integrated Result
+```
+
+### Interactive features
+
+- **Auto Mode** — temperature changes trigger a short debounce and then refresh the full AI pipeline.
+- **AI Decision Timeline** — shows the current temperature, fuzzy decision, FOPL policy, RL reward statistics, data statistics, and final action in one line.
+- **Module status indicators** — live status for Fuzzy, FOPL, RL, and Data modules.
+- **RL statistics** — episode count, best reward, average reward, and latest reward.
+- **Export Report** — packages charts, summary information, and FOPL inference into a ZIP file.
+- **GUI smoke test** — the CI pipeline launches the Tkinter interface under Xvfb and checks construction plus theme switching.
+
 ## Windows Executable
 
 The repository includes an application icon and Windows launcher scripts. If you want to distribute a standalone executable, build it locally with PyInstaller rather than committing the generated `build/` or `dist/` directories.
