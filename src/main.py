@@ -1401,7 +1401,7 @@ class DemoApp(tk.Tk):
             pass
 
     def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent,
-                         mark_best=False):
+                         mark_best=False, mark_average=False):
         # Persistent figure per chart: replot into the same axes instead of
         # destroying the widget, so refreshes never flash or jump.
         if parent is self.rl_chart:
@@ -1445,6 +1445,16 @@ class DemoApp(tk.Tk):
                        color="#ffffff", s=80, zorder=5)
             ax.scatter([x_values[best_i]], [y_values[best_i]],
                        color=accent, s=38, zorder=6)
+        if mark_average and len(y_values) >= 1:
+            average = sum(y_values) / len(y_values)
+            ax.axhline(
+                average, color=self.MUTED, linewidth=1.2,
+                linestyle=":", alpha=0.9
+            )
+            ax.text(
+                x_values[-1], average, f" avg {average:.2f}",
+                color=self.MUTED, fontsize=7, ha="right", va="bottom"
+            )
         ax.set_title(title, color=self.TEXT, fontsize=10, loc="left", pad=10)
         ax.set_xlabel(x_label, color=self.MUTED, fontsize=8)
         ax.set_ylabel(y_label, color=self.MUTED, fontsize=8)
@@ -1608,7 +1618,7 @@ class DemoApp(tk.Tk):
         self._draw_line_chart(
             self.rl_chart, list(range(1, len(rewards) + 1)), rewards,
             "Reward by episode", "Episode", "Reward", self.ACCENT_2,
-            mark_best=True
+            mark_best=True, mark_average=True
         )
 
         y_values = normalize_values(result.get("processed_data", []))
