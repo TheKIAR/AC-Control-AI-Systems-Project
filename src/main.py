@@ -223,6 +223,11 @@ class DemoApp(tk.Tk):
         self.saver_var = tk.BooleanVar(value=False)
         self.data_stats_var = tk.StringVar(value="")
         self.agree_var = tk.StringVar(value="")
+        self.rl_stats_var = tk.StringVar(value="")
+        self.timeline_var = tk.StringVar(value="")
+        self.auto_mode_var = tk.BooleanVar(value=False)
+        self._auto_job = None
+        self.module_status_labels = {}
         self.fopl_box = None
         self.agree_lamp = None
         self._splash = None
@@ -667,6 +672,11 @@ class DemoApp(tk.Tk):
             bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
             width=88, height=40, radius=16
         ).pack(side="left", padx=(10, 0))
+        RoundedButton(
+            action_row, text="Auto Mode", command=self._toggle_auto_mode,
+            bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
+            width=108, height=40, radius=16
+        ).pack(side="left", padx=(10, 0))
         tk.Label(
             action_row, textvariable=self.fuzzy_result_var,
             bg=self.PANEL, fg=self.ACCENT,
@@ -723,16 +733,34 @@ class DemoApp(tk.Tk):
                                    anchor="w", justify="left")
         self.agree_lamp.pack(fill="x", pady=(2, 0))
 
+        timeline_shell, timeline_inner = self._rounded_panel(body, bg=self.BG, radius=18)
+        timeline_shell.pack(fill="x", pady=(0, 16))
+        tk.Label(
+            timeline_inner, text="AI DECISION TIMELINE", bg=self.CARD,
+            fg=self.MUTED, font=("Segoe UI", 9, "bold")
+        ).pack(anchor="w", padx=16, pady=(10, 3))
+        tk.Label(
+            timeline_inner, textvariable=self.timeline_var, bg=self.CARD,
+            fg=self.TEXT, font=("Consolas", 9, "bold"),
+            anchor="w", justify="left", wraplength=1120
+        ).pack(fill="x", padx=16, pady=(0, 12))
+
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
         tk.Label(
             output_title, text="Results", bg=self.BG, fg=self.TEXT,
             font=("Segoe UI", 12, "bold")
         ).pack(side="left")
-        tk.Label(
-            output_title, text="Live", bg=self.BG, fg=self.MUTED,
-            font=("Segoe UI", 8, "bold")
-        ).pack(side="right")
+        self.module_status_frame = tk.Frame(output_title, bg=self.BG)
+        self.module_status_frame.pack(side="right")
+        for name in ("FUZZY", "FOPL", "RL", "DATA"):
+            label = tk.Label(
+                self.module_status_frame, text=f"● {name}",
+                bg=self.BG, fg=self.MUTED,
+                font=("Segoe UI", 8, "bold")
+            )
+            label.pack(side="left", padx=(10, 0))
+            self.module_status_labels[name] = label
 
         self.output_grid = tk.Frame(body, bg=self.BG)
         self.output_grid.pack(fill="both", expand=True)
@@ -755,6 +783,9 @@ class DemoApp(tk.Tk):
         self.rl_chart = self._chart_host(self.rl_card)
         self.data_chart = self._chart_host(self.data_card)
 
+        tk.Label(self.rl_card, textvariable=self.rl_stats_var,
+                 bg=self.CARD, fg=self.MUTED, font=("Consolas", 8),
+                 anchor="w", justify="left").pack(fill="x", padx=18, pady=(0, 10))
         tk.Label(self.data_card, textvariable=self.data_stats_var,
                  bg=self.CARD, fg=self.MUTED, font=("Consolas", 8),
                  anchor="w", justify="left").pack(fill="x", padx=18, pady=(0, 10))
@@ -1431,6 +1462,101 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
+    def _toggle_auto_mode(self):
+        self.auto_mode_var.set(not self.auto_mode_var.get())
+        state = "ON" if self.auto_mode_var.get() else "OFF"
+        self.status_var.set(f"AUTO MODE {state}")
+        if self.auto_mode_var.get():
+            self._schedule_auto_run()
+
+    def _schedule_auto_run(self):
+        if getattr(self, "_auto_job", None) is not None:
+            try:
+                self.after_cancel(self._auto_job)
+            except Exception:
+                pass
+            self._auto_job = None
+        if not self.auto_mode_var.get():
+            return
+        try:
+            self._auto_job = self.after(700, self._auto_run)
+        except Exception:
+            self._auto_job = None
+
+    def _auto_run(self):
+        self._auto_job = None
+        if self.auto_mode_var.get():
+            self.run_demo(auto=True)
+
+    def _update_module_statuses(self, active=True):
+        if not getattr(self, "module_status_labels", None):
+            return
+        for name, label in self.module_status_labels.items():
+            try:
+                label.configure(fg=self.ACCENT if active else self.MUTED)
+            except Exception:
+                pass
+
+    def _refresh_decision_timeline(self):
+        try:
+            temperature = int(self.temp_var.get())
+        except Exception:
+            temperature = 22
+        try:
+            fuzzy = FuzzySystem().evaluate(temperature)
+        except Exception:
+            fuzzy = "Unavailable"
+        try:
+            advisor = build_advisor(
+                temperature,
+                occupied=bool(self.occupied_var.get()),
+                night=bool(self.night_var.get()),
+                energy_saver=bool(self.saver_var.get()),
+            )
+            conclusions = advisor.get("conclusions", [])
+            policy = " + ".join(conclusions) if conclusions else "NO POLICY ACTION"
+        except Exception:
+            policy = "POLICY UNAVAILABLE"
+
+        result = getattr(self, "_last_result", None) or {}
+        rewards = result.get("rl_rewards", []) or []
+        if rewards:
+            best = max(rewards)
+            avg = sum(rewards) / len(rewards)
+            rl_text = f"BEST {best:.2f} · AVG {avg:.2f}"
+        else:
+            rl_text = "NOT TRAINED"
+
+        try:
+            values = normalize_values(result.get("processed_data", []))
+            data_text = f"N={len(values)} · MEAN={sum(values)/len(values):.2f}"
+        except Exception:
+            data_text = "NO DATA"
+
+        if "Decrease Temperature" in fuzzy:
+            final = "COOLING"
+        elif "Increase Temperature" in fuzzy:
+            final = "HEATING"
+        else:
+            final = "HOLD"
+
+        self.timeline_var.set(
+            f"{temperature:g}°C  →  FUZZY: {fuzzy.upper()}  →  "
+            f"FOPL: {policy}  →  RL: {rl_text}  →  DATA: {data_text}  →  FINAL: {final}"
+        )
+
+    def _refresh_rl_stats(self, rewards):
+        values = [float(v) for v in (rewards or [])]
+        if not values:
+            self.rl_stats_var.set("No training data")
+            return
+        best = max(values)
+        average = sum(values) / len(values)
+        latest = values[-1]
+        self.rl_stats_var.set(
+            f"episodes={len(values)}   best={best:.2f}   avg={average:.2f}   latest={latest:.2f}"
+        )
+
     def _refresh_fopl(self):
         # Live FOPL verdict from the current temperature + room toggles.
         # Never raises: a broken advisor must not take down the fuzzy view.
@@ -1471,13 +1597,14 @@ class DemoApp(tk.Tk):
             what = "HOLD"
         self.agree_var.set(f"{'● AGREE' if ok else '● DIFFERS'}  //  FUZZY {what} vs POLICY")
         if self.agree_lamp is not None:
-            self.agree_lamp.configure(fg=self.GREEN if ok else "#e0a02e")
+            self.agree_lamp.configure(fg=self.GREEN if ok else self.RED)
 
     def _render_all(self, result):
         self._last_result = result
         self._draw_fuzzy(result["temperature"])
 
         rewards = result.get("rl_rewards", []) or [0.0]
+        self._refresh_rl_stats(rewards)
         self._draw_line_chart(
             self.rl_chart, list(range(1, len(rewards) + 1)), rewards,
             "Reward by episode", "Episode", "Reward", self.ACCENT_2,
@@ -1501,6 +1628,8 @@ class DemoApp(tk.Tk):
             self._refresh_fopl()
         except Exception:
             pass
+        self._refresh_decision_timeline()
+        self._update_module_statuses(True)
 
     def _update_fuzzy_only(self, animate=True):
         temperature = int(self.temp_var.get())
@@ -1521,6 +1650,9 @@ class DemoApp(tk.Tk):
 
     def _on_temperature_changed(self, *_):
         self._update_fuzzy_only()
+        if self.auto_mode_var.get():
+            self.status_var.set("AUTO MODE  //  WAITING FOR TEMPERATURE")
+            self._schedule_auto_run()
 
     def _on_settings_changed(self, *_):
         self.preset_var.set("CUSTOM")
@@ -1568,13 +1700,16 @@ class DemoApp(tk.Tk):
             )
             self.fuzzy_result_var.set(f"FUZZY OUTPUT  //  {result['fuzzy_result'].upper()}")
             self._render_all(result)
-            self.status_var.set("SYSTEM ONLINE  //  LIVE")
+            self.status_var.set("AUTO SYSTEM ONLINE  //  LIVE" if auto else "SYSTEM ONLINE  //  LIVE")
         except Exception as exc:
             self.status_var.set("SYSTEM ERROR")
             self._set_error(str(exc))
 
-    def run_demo(self):
-        self.status_var.set("PROCESSING  //  AI MODULES ACTIVE")
+    def run_demo(self, auto=False):
+        self.status_var.set(
+            "AUTO PROCESSING  //  AI MODULES ACTIVE" if auto
+            else "PROCESSING  //  AI MODULES ACTIVE"
+        )
         self.update_idletasks()
         try:
             result = run_demo(
@@ -1593,6 +1728,13 @@ class DemoApp(tk.Tk):
                 )
 
     def reset_controls(self):
+        if getattr(self, "_auto_job", None) is not None:
+            try:
+                self.after_cancel(self._auto_job)
+            except Exception:
+                pass
+            self._auto_job = None
+        self.auto_mode_var.set(False)
         self.temp_var.set(22)
         self.rl_var.set(5)
         self.data_count_var.set(5)
@@ -1708,7 +1850,7 @@ class DemoApp(tk.Tk):
         self._stop_pulse()
         for job in (getattr(self, "_animation_job", None), getattr(self, "_frame_job", None),
                     getattr(self, "_scroll_job", None), getattr(self, "_refit_job", None),
-                    getattr(self, "_weather_job", None)):
+                    getattr(self, "_weather_job", None), getattr(self, "_auto_job", None)):
             if job is not None:
                 try:
                     self.after_cancel(job)
