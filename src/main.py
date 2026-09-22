@@ -1024,50 +1024,94 @@ class DemoApp(tk.Tk):
 
         mode = self._weather
         if mode not in ("snow", "rain", "sun", "leaves", "petals"):
-            mode = random.choice(("snow", "rain", "sun", "leaves", "petals"))
+            mode = "sun"
             self._spawn_weather(mode)
 
         phase = self._frame_phase
         mid_y = h / 2.0
 
-        # The main UI remains cyan-monochrome, but the seasonal animation
-        # uses natural accent colours so each season is immediately readable.
-        # Dark/light theme only changes the atmospheric base and contrast.
+        # The UI stays cyan-monochrome, while the sky becomes a small
+        # illustrated seasonal scene. Layered bands create a soft gradient
+        # without requiring image assets, keeping the animation lightweight.
         if self.theme == "dark":
-            bands = ("#08161d", "#0a1b23", "#0d2028", "#10262e", "#142c33")
-            cloud = "#3a6972"
-            light_particle = "#bfeaf0"
+            base_gradients = {
+                "snow": ("#07131b", "#0d2530", "#183843"),
+                "rain": ("#071520", "#0c2b3d", "#17445b"),
+                "sun": ("#17161a", "#3b2a1b", "#5a3920"),
+                "leaves": ("#171519", "#35261e", "#4a3020"),
+                "petals": ("#17151b", "#35232f", "#493043"),
+            }
+            cloud = "#355864"
+            ground = "#101b21"
+            text_fill = "#f5fbfc"
         else:
-            bands = ("#e7f5f7", "#edf8f9", "#f2fafb", "#f6fcfc", "#fbfefe")
-            cloud = "#9ab9bf"
-            light_particle = "#6a9da5"
+            base_gradients = {
+                "snow": ("#dceff5", "#edf8fa", "#f9fdff"),
+                "rain": ("#c8e8f6", "#e4f4fa", "#f7fcfe"),
+                "sun": ("#fff0bd", "#fff7d9", "#fffdf2"),
+                "leaves": ("#f7dfc6", "#f9ead8", "#fff7ee"),
+                "petals": ("#f8dce9", "#fcebf2", "#fff8fb"),
+            }
+            cloud = "#a6c2c9"
+            ground = "#d9e8eb"
+            text_fill = "#17353b"
 
         season_colors = {
-            "snow": ("#f3fbff", "#bfe8f2", "#8bd0dc"),
-            "rain": ("#69b7e8", "#4f9fd4", "#9bd4f0"),
-            "sun": ("#ffd34e", "#f5a623", "#fff0a3"),
-            "leaves": ("#e07a22", "#b84a16", "#f0b44d"),
-            "petals": ("#f08fb4", "#d85f8a", "#f7c2d6"),
+            "snow": ("#f7fdff", "#c7edf6", "#8dd5e3"),
+            "rain": ("#79c8f0", "#4b9fd5", "#a9def7"),
+            "sun": ("#ffd34e", "#f5a623", "#fff2a8"),
+            "leaves": ("#e78a2f", "#b84d18", "#f2bd64"),
+            "petals": ("#f29bbb", "#d75e8d", "#f8c8da"),
         }
-        particle, particle_soft, particle_glow = season_colors.get(
-            mode, ("#62dceb", "#2daabd", "#a9edf3")
-        )
-        muted = light_particle
+        particle, particle_soft, particle_glow = season_colors[mode]
 
-        band_h = max(1, h / len(bands))
-        for i, band in enumerate(bands):
-            c.create_rectangle(0, i * band_h, w, (i + 1) * band_h + 1,
-                               fill=band, outline="")
+        def mix(a, b, t):
+            a = a.lstrip("#")
+            b = b.lstrip("#")
+            return "#" + "".join(
+                f"{round(int(a[i:i+2], 16) * (1-t) + int(b[i:i+2], 16) * t):02x}"
+                for i in (0, 2, 4)
+            )
 
-        # Slow drifting cloud layer, present in every condition.
-        cloud_y = max(18, h * 0.28)
+        top, middle, bottom = base_gradients[mode]
+        bands = 18
+        for i in range(bands):
+            t = i / max(1, bands - 1)
+            if t < 0.58:
+                color = mix(top, middle, t / 0.58)
+            else:
+                color = mix(middle, bottom, (t - 0.58) / 0.42)
+            y1 = i * h / bands
+            y2 = (i + 1) * h / bands + 1
+            c.create_rectangle(0, y1, w, y2, fill=color, outline="")
+
+        # Soft horizon glow gives the strip depth and makes the particles
+        # read as part of the environment instead of floating on a flat box.
+        horizon_y = h * 0.78
+        for i in range(7):
+            spread = i / 6
+            glow = mix(particle_glow, bottom, 0.18 + spread * 0.68)
+            y1 = horizon_y - 20 + i * 8
+            c.create_rectangle(0, y1, w, y1 + 9, fill=glow, outline="")
+
+        # Slow parallax clouds. Each cloud has a slightly different speed and
+        # vertical drift so the background never feels mechanically repeated.
+        cloud_y = max(20, h * 0.24)
         for i in range(3):
-            cx = ((w * (0.18 + i * 0.38) + phase * (0.18 + i * 0.05)) % (w + 170)) - 85
-            cy = cloud_y + math.sin(phase * 0.012 + i) * 5
-            cloud = cloud
-            c.create_oval(cx - 48, cy - 10, cx + 30, cy + 14, fill=cloud, outline="")
-            c.create_oval(cx - 18, cy - 23, cx + 42, cy + 15, fill=cloud, outline="")
-            c.create_oval(cx + 18, cy - 8, cx + 70, cy + 14, fill=cloud, outline="")
+            speed = 0.10 + i * 0.045
+            cx = ((w * (0.12 + i * 0.42) + phase * speed) % (w + 190)) - 95
+            cy = cloud_y + math.sin(phase * 0.010 + i * 1.7) * 4
+            cloud_main = mix(cloud, top, 0.18 if self.theme == "dark" else 0.12)
+            c.create_oval(cx - 58, cy - 5, cx + 28, cy + 17, fill=cloud_main, outline="")
+            c.create_oval(cx - 27, cy - 20, cx + 42, cy + 18, fill=cloud_main, outline="")
+            c.create_oval(cx + 18, cy - 6, cx + 72, cy + 17, fill=cloud_main, outline="")
+
+        # A gentle atmospheric arc adds depth behind the main seasonal object.
+        c.create_arc(
+            w * 0.55, -h * 0.62, w * 1.22, h * 0.88,
+            start=205, extent=105, style="arc",
+            outline=mix(particle_glow, top, 0.30), width=2
+        )
 
         if mode == "snow":
             shades = {
@@ -1075,87 +1119,156 @@ class DemoApp(tk.Tk):
                 "flake1": season_colors["snow"][1],
                 "flake2": season_colors["snow"][2],
             }
+            # Icy moon/orb.
+            cx, cy = w - 72, 42
+            for rr, col in ((31, mix(particle_glow, top, 0.78)),
+                            (25, mix(particle_glow, top, 0.42)),
+                            (18, particle)):
+                c.create_oval(cx-rr, cy-rr, cx+rr, cy+rr, fill=col, outline="")
+            c.create_oval(cx-7, cy-5, cx-2, cy, fill=mix(top, particle, 0.45), outline="")
+            c.create_oval(cx+4, cy+4, cx+8, cy+8, fill=mix(top, particle, 0.55), outline="")
+
             for p in self._weather_parts:
                 x = ((p["bx"] + p["sway"] * math.sin(phase * 0.05 + p["ph"])) % 1.0) * w
                 y = ((p["by"] + phase * p["spd"]) % 1.0) * h
                 r = p["r"]
-                c.create_oval(x-r, y-r, x+r, y+r, fill=shades[p["shade"]], outline="")
+                col = shades[p["shade"]]
+                if r >= 2:
+                    c.create_line(x-r, y, x+r, y, fill=col, width=1)
+                    c.create_line(x, y-r, x, y+r, fill=col, width=1)
+                c.create_oval(x-r, y-r, x+r, y+r, fill=col, outline="")
+
         elif mode == "rain":
+            # Distant rainy skyline + a reflective puddle at the bottom.
+            skyline_y = h * 0.72
+            for i in range(10):
+                bx = i * (w / 9.0)
+                bh = 10 + ((i * 17) % 25)
+                c.create_rectangle(
+                    bx, skyline_y - bh, bx + w / 13.0, skyline_y,
+                    fill=mix(ground, bottom, 0.35), outline=""
+                )
+            c.create_rectangle(0, skyline_y, w, h, fill=mix(ground, bottom, 0.20), outline="")
+            for i in range(9):
+                px = (i + 0.35) * w / 9.0
+                ripple = 3 + 2 * math.sin(phase * 0.08 + i)
+                c.create_oval(px-ripple*2, skyline_y+16+i%3*7-ripple,
+                              px+ripple*2, skyline_y+16+i%3*7+ripple,
+                              outline=mix(particle_glow, bottom, 0.45), width=1)
+
             for p in self._weather_parts:
                 x = ((p["bx"] + phase * p["drift"]) % 1.0) * w
                 y = ((p["by"] + phase * p["spd"]) % 1.0) * h
                 ln = p["len"]
-                c.create_line(x, y, x - ln * 0.30, y + ln,
-                              fill=particle, width=2)
+                c.create_line(
+                    x, y, x - ln * 0.30, y + ln,
+                    fill=particle, width=2, capstyle="round"
+                )
+
         elif mode == "sun":
-            cx, cy = w - 76, max(30, mid_y)
-            pulse = 2.5 * math.sin(phase * 0.06)
-            sun_r = min(28.0, max(18.0, mid_y - 10.0))
-            for ring in (12, 7):
-                rr = sun_r + ring + pulse
-                c.create_oval(cx-rr, cy-rr, cx+rr, cy+rr,
-                              outline=particle_soft, width=1)
+            # Warm sun with layered glow, slow breathing and a soft horizon.
+            cx, cy = w - 78, max(38, h * 0.40)
+            pulse = 2.0 * math.sin(phase * 0.055)
+            sun_r = min(29.0, max(19.0, mid_y - 8.0))
+            for rr, col in (
+                (sun_r + 24 + pulse, mix(particle_glow, top, 0.72)),
+                (sun_r + 16 + pulse, mix(particle_glow, top, 0.42)),
+                (sun_r + 9 + pulse, particle_soft),
+            ):
+                c.create_oval(cx-rr, cy-rr, cx+rr, cy+rr, outline=col, width=2)
             c.create_oval(cx-sun_r, cy-sun_r, cx+sun_r, cy+sun_r,
                           fill=particle, outline="")
-            for angle in range(0, 360, 45):
+            for angle in range(0, 360, 30):
+                length = 12 + 3 * math.sin(phase * 0.04 + angle)
                 dx = math.cos(math.radians(angle))
                 dy = math.sin(math.radians(angle))
-                c.create_line(cx+dx*(sun_r+5), cy+dy*(sun_r+5),
-                              cx+dx*(sun_r+12), cy+dy*(sun_r+12),
-                              fill=particle, width=2, capstyle="round")
+                c.create_line(
+                    cx+dx*(sun_r+5), cy+dy*(sun_r+5),
+                    cx+dx*(sun_r+length), cy+dy*(sun_r+length),
+                    fill=particle_soft, width=2, capstyle="round"
+                )
             for p in self._weather_parts:
                 x = ((p["bx"] + 0.006 * math.sin(phase*0.04 + p["ph"])) % 1.0) * w
                 y = ((p["by"] - phase*p["spd"]) % 1.0) * h
                 r = p["r"]
                 c.create_oval(x-r, y-r, x+r, y+r, fill=particle_soft, outline="")
+
         elif mode == "leaves":
+            # Autumn uses a low sun and layered falling leaves.
+            cx, cy = w - 80, h * 0.46
+            c.create_oval(cx-27, cy-27, cx+27, cy+27,
+                          fill=mix(particle, bottom, 0.18), outline="")
+            c.create_oval(cx-37, cy-37, cx+37, cy+37,
+                          outline=mix(particle_glow, top, 0.42), width=2)
             for p in self._weather_parts:
                 x = ((p["bx"] + p["sway"] * math.sin(phase*0.035 + p["ph"])) % 1.0) * w
                 y = ((p["by"] + phase*p["spd"]) % 1.0) * h
                 s = p["size"]
+                rot = p["rot"] + phase * 0.045
+                dx = math.cos(rot) * s
+                dy = math.sin(rot) * s
                 c.create_polygon(
-                    x, y-s, x+s*0.7, y, x, y+s, x-s*0.7, y,
+                    x, y-s,
+                    x+dx+s*0.7, y+dy*0.15,
+                    x, y+s,
+                    x-dx-s*0.7, y-dy*0.15,
                     fill=particle_soft, outline=""
                 )
-        else:  # petals
+                c.create_line(x, y-s*0.55, x, y+s*0.55,
+                              fill=particle_glow, width=1)
+
+        else:  # spring petals
+            # Spring gets a soft pink glow and drifting petals with rotation.
+            cx, cy = w - 82, h * 0.40
+            for rr, col in ((31, mix(particle_glow, top, 0.74)),
+                            (24, mix(particle_glow, top, 0.42)),
+                            (17, particle_soft)):
+                c.create_oval(cx-rr, cy-rr, cx+rr, cy+rr, fill=col, outline="")
             for p in self._weather_parts:
                 x = ((p["bx"] + p["sway"] * math.sin(phase*0.03 + p["ph"])) % 1.0) * w
                 y = ((p["by"] - phase*p["spd"]) % 1.0) * h
                 s = p["size"]
-                c.create_oval(x-s, y-s*0.65, x+s, y+s*0.65,
+                rot = phase * 0.035 + p["ph"]
+                dx = math.cos(rot) * s
+                dy = math.sin(rot) * s
+                c.create_oval(x-s, y-s*0.62, x+s, y+s*0.62,
                               fill=particle_soft, outline="")
+                c.create_line(x-dx, y-dy, x+dx, y+dy,
+                              fill=particle_glow, width=1)
+
+        # Ground line and tiny moving glints tie the scene together.
+        ground_y = h * 0.86
+        c.create_rectangle(0, ground_y, w, h, fill=ground, outline="")
+        c.create_line(0, ground_y, w, ground_y,
+                      fill=mix(particle_glow, ground, 0.38), width=1)
+        for i in range(8):
+            gx = ((i * w / 7.0 + phase * (0.35 + i * 0.02)) % (w + 30)) - 15
+            gy = ground_y + 8 + (i % 3) * 5
+            c.create_oval(gx, gy, gx+2, gy+2, fill=particle_glow, outline="")
 
         labels = {
-            "snow": "WINTER",
-            "rain": "RAIN",
-            "sun": "SUMMER",
-            "leaves": "AUTUMN",
-            "petals": "SPRING",
+            "snow": ("WINTER", "❄"),
+            "rain": ("RAIN", "☔"),
+            "sun": ("SUMMER", "☀"),
+            "leaves": ("AUTUMN", "✦"),
+            "petals": ("SPRING", "✿"),
         }
-        label = labels[mode]
+        label, icon = labels[mode]
 
-        # Minimal condition marker and live temperature.
-        ix, iy = 34, mid_y
-        if mode == "snow":
-            for angle in (0, 60, 120):
-                dx = 9 * math.cos(math.radians(angle))
-                dy = 9 * math.sin(math.radians(angle))
-                c.create_line(ix-dx, iy-dy, ix+dx, iy+dy,
-                              fill=particle, width=2, capstyle="round")
-        elif mode == "rain":
-            for dx in (-8, 0, 8):
-                c.create_line(ix+dx, iy-9, ix+dx-4, iy+9,
-                              fill=particle, width=2, capstyle="round")
-        else:
-            c.create_oval(ix-8, iy-8, ix+8, iy+8, fill=particle, outline="")
-            for angle in range(0, 360, 45):
-                dx = 13 * math.cos(math.radians(angle))
-                dy = 13 * math.sin(math.radians(angle))
-                c.create_line(ix+dx*0.8, iy+dy*0.8, ix+dx, iy+dy,
-                              fill=particle, width=2, capstyle="round")
-
-        c.create_text(58, mid_y, text=f"{label}  ·  {temperature:g}°C",
-                      anchor="w", fill=self.TEXT, font=("Segoe UI", 14, "bold"))
+        # Compact glass-like caption: the scene remains the hero, but the
+        # current condition and temperature are always readable.
+        pill_w, pill_h = 208, 42
+        px, py = 20, h - 57
+        _rounded_rect(c, px, py, px + pill_w, py + pill_h, 17,
+                      mix(self.CARD, top, 0.10))
+        c.create_oval(px + 12, py + 12, px + 28, py + 28,
+                      fill=particle, outline="")
+        c.create_text(px + 38, py + 12, text=f"{icon}  {label}",
+                      anchor="w", fill=text_fill,
+                      font=("Segoe UI", 9, "bold"))
+        c.create_text(px + 38, py + 29, text=f"{temperature:g}°C  ·  LIVE ATMOSPHERE",
+                      anchor="w", fill=mix(text_fill, particle_glow, 0.45),
+                      font=("Segoe UI", 8))
 
     def _paint_sky(self):
         canvas = getattr(self, "_sky_canvas", None)
