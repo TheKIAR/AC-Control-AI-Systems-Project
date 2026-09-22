@@ -16,6 +16,15 @@ except ImportError:
     TK_AVAILABLE = False
 
 try:
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    from matplotlib.figure import Figure
+    FIGURE_AVAILABLE = True
+except Exception:
+    FigureCanvasTkAgg = None
+    Figure = None
+    FIGURE_AVAILABLE = False
+
+try:
     from fuzzy_logic.fuzzy_system import FuzzySystem
     from fopl.advisor import build_advisor
     from reinforcement_learning.agent import RLAgent
@@ -71,6 +80,7 @@ def compute(temperature=22, episodes=5, points=5, method="supervised"):
         "best": max(rewards),
         "average": sum(rewards) / len(rewards),
         "count": len(flat),
+        "flat": flat,
         "minimum": min(flat),
         "maximum": max(flat),
         "mean": sum(flat) / len(flat),
@@ -97,13 +107,13 @@ def format_result(result):
 
 
 class BasicApp(tk.Tk):
-    """Plain white GUI: basic controls on top, plain text results below."""
+    """Plain white GUI: basic controls on top, charts plus text below."""
 
     def __init__(self):
         super().__init__()
         self.title("AI Systems Project (Basic)")
-        self.geometry("640x560")
-        self.minsize(520, 480)
+        self.geometry("1020x760")
+        self.minsize(760, 600)
         self.configure(bg="#ffffff")
 
         self.temp_var = tk.IntVar(value=22)
@@ -131,13 +141,85 @@ class BasicApp(tk.Tk):
         tk.Button(buttons, text="Reset", width=12,
                   command=self.reset_all).pack(side="left", padx=(8, 0))
 
-        self.output = tk.Text(self, height=20, wrap="word", bg="#ffffff",
+        self.output = tk.Text(self, height=10, wrap="word", bg="#ffffff",
                               fg="#000000", relief="solid", borderwidth=1)
         self.output.pack(fill="both", expand=True, padx=12, pady=(0, 12))
         self.output.insert("1.0", "Press Run to evaluate all four AI modules.")
         self.output.configure(state="disabled")
 
+        charts = tk.Frame(self, bg="#ffffff")
+        charts.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        for column in range(3):
+            charts.grid_columnconfigure(column, weight=1, uniform="basic")
+        self.fuzzy_host = tk.Frame(charts, bg="#ffffff")
+        self.fuzzy_host.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        self.rl_host = tk.Frame(charts, bg="#ffffff")
+        self.rl_host.grid(row=0, column=1, sticky="nsew", padx=6)
+        self.data_host = tk.Frame(charts, bg="#ffffff")
+        self.data_host.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
+
         self.run_all()
+
+    def _plain_figure(self, title):
+        fig = Figure(figsize=(3.1, 2.6), dpi=100, facecolor="#ffffff")
+        ax = fig.add_subplot(111)
+        ax.set_facecolor("#ffffff")
+        ax.set_title(title, fontsize=10, color="#000000")
+        ax.tick_params(colors="#000000", labelsize=8)
+        for spine in ax.spines.values():
+            spine.set_color("#888888")
+        return fig, ax
+
+    def _show_figure(self, host, fig):
+        for child in host.winfo_children():
+            try:
+                child.destroy()
+            except Exception:
+                pass
+        if not FIGURE_AVAILABLE:
+            tk.Label(host, text="(charts need matplotlib)", bg="#ffffff",
+                     fg="#000000").pack(expand=True)
+            return
+        canvas = FigureCanvasTkAgg(fig, master=host)
+        canvas.draw()
+        widget = canvas.get_tk_widget()
+        widget.pack(fill="both", expand=True)
+
+    def _draw_charts(self, result):
+        levels = {"Increase Temperature": 1, "Maintain Temperature": 2,
+                  "Decrease Temperature": 3}
+        system = FuzzySystem()
+        temps = [16, 18, 20, 22, 24, 26, 28, 30]
+        values = [levels[system.evaluate(t)] for t in temps]
+        fig, ax = self._plain_figure("Fuzzy decisions")
+        bars = ax.bar(temps, values,
+                      color=["#000000" if t == result["temperature"] else "#999999"
+                             for t in temps])
+        ax.set_xlabel("Temperature (C)", fontsize=8, color="#000000")
+        ax.set_ylabel("Decision", fontsize=8, color="#000000")
+        ax.set_yticks([1, 2, 3])
+        ax.set_yticklabels(["Increase", "Maintain", "Decrease"], fontsize=7)
+        fig.tight_layout()
+        self._show_figure(self.fuzzy_host, fig)
+
+        rewards = result["rewards"]
+        fig, ax = self._plain_figure("RL rewards")
+        ax.plot(list(range(1, len(rewards) + 1)), rewards, marker="o",
+                color="#0000cc")
+        ax.set_xlabel("Episode", fontsize=8, color="#000000")
+        ax.set_ylabel("Reward", fontsize=8, color="#000000")
+        ax.grid(True, linestyle="--", alpha=0.4, color="#888888")
+        fig.tight_layout()
+        self._show_figure(self.rl_host, fig)
+
+        y_values = result.get("flat", [0.0])
+        fig, ax = self._plain_figure("Data output")
+        ax.plot(list(range(len(y_values))), y_values, marker="o", color="#007700")
+        ax.set_xlabel("Sample", fontsize=8, color="#000000")
+        ax.set_ylabel("Value", fontsize=8, color="#000000")
+        ax.grid(True, linestyle="--", alpha=0.4, color="#888888")
+        fig.tight_layout()
+        self._show_figure(self.data_host, fig)
 
     def _row(self, parent, label, variable, minimum, maximum):
         row = tk.Frame(parent, bg="#ffffff")
@@ -164,6 +246,10 @@ class BasicApp(tk.Tk):
             self._show(f"Error: {type(exc).__name__}: {exc}")
             return
         self._show(format_result(result))
+        try:
+            self._draw_charts(result)
+        except Exception as exc:
+            self._show(format_result(result) + f"\n\nCharts unavailable: {exc}")
 
     def reset_all(self):
         self.temp_var.set(22)
