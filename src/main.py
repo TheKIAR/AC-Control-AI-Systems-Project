@@ -1257,17 +1257,79 @@ class DemoApp(tk.Tk):
                 c.create_oval(x-s,y-s*.6,x+s,y+s*.6,fill=p["accent"],outline="")
                 c.create_line(x-s*.8,y,x+s*.8,y,fill=p["light"],width=1)
 
+        # A consistent tree silhouette anchors every season. Foliage is
+        # deliberately drawn after the weather particles so the leaves/
+        # blossoms stay visibly attached to the top of the branches.
+        tree_x = w * 0.84
+        tree_base_y = h * 0.88
+        tree_top_y = h * 0.45
+        trunk_color = "#332b28" if mode != "snow" else "#3b4245"
+        c.create_line(tree_x, tree_base_y, tree_x - 8, tree_top_y,
+                      fill=trunk_color, width=6)
+        tree_branches = (
+            (-58, -46), (-44, -70), (-20, -92),
+            (8, -82), (34, -62), (52, -40),
+        )
+        for dx, dy in tree_branches:
+            c.create_line(tree_x - 8, tree_top_y,
+                          tree_x + dx, tree_top_y + dy,
+                          fill=trunk_color, width=3)
+
+        foliage = {
+            "snow": ("#6f8f96", "#88aeb5", "#d8eef3"),
+            "rain": ("#286b55", "#3d8a68", "#68a87c"),
+            "sun": ("#2f704b", "#4f9a5f", "#83b968"),
+            "leaves": ("#a9441a", "#df7d24", "#f0b44d"),
+            "petals": ("#c95d83", "#ee91ad", "#f6c4d4"),
+        }
+        f1, f2, f3 = foliage[mode]
+        canopy_points = [
+            (-62, -48, 17), (-45, -68, 20), (-24, -88, 22),
+            (3, -82, 21), (30, -63, 20), (50, -42, 17),
+            (-37, -42, 19), (-4, -53, 20), (24, -43, 18),
+        ]
+        for i, (dx, dy, rr) in enumerate(canopy_points):
+            col = (f1, f2, f3)[i % 3]
+            c.create_oval(tree_x + dx - rr, tree_top_y + dy - rr * .72,
+                          tree_x + dx + rr, tree_top_y + dy + rr * .72,
+                          fill=col, outline="")
+            if i % 2 == 0:
+                c.create_oval(tree_x + dx - rr*.35, tree_top_y + dy - rr*.8,
+                              tree_x + dx + rr*.45, tree_top_y + dy - rr*.1,
+                              fill=f3, outline="")
+
+        if mode == "snow":
+            for dx, dy in ((-45,-68), (-22,-88), (5,-82), (31,-63)):
+                c.create_oval(tree_x + dx - 12, tree_top_y + dy - 5,
+                              tree_x + dx + 12, tree_top_y + dy + 4,
+                              fill="#f4fcff", outline="")
+        elif mode == "leaves":
+            for dx, dy, rr in ((-25,-101,9), (2,-96,10), (28,-77,9)):
+                c.create_oval(tree_x + dx - rr, tree_top_y + dy - rr*.7,
+                              tree_x + dx + rr, tree_top_y + dy + rr*.7,
+                              fill=f2, outline="")
+        elif mode == "petals":
+            for dx, dy in ((-30,-98), (0,-105), (28,-84)):
+                for ang in range(0, 360, 90):
+                    ox = math.cos(math.radians(ang)) * 5
+                    oy = math.sin(math.radians(ang)) * 4
+                    c.create_oval(tree_x + dx + ox - 3, tree_top_y + dy + oy - 3,
+                                  tree_x + dx + ox + 3, tree_top_y + dy + oy + 3,
+                                  fill=f2, outline="")
+
         # Soft foreground edge.
         ground_y=h*.88
         c.create_rectangle(0,ground_y,w,h,fill=mix(p["ground"],bottom,.18),outline="")
         c.create_line(0,ground_y,w,ground_y,fill=p["soft"],width=1)
 
+        # Keep the weather label font-safe on Windows/Tk: emoji glyphs can
+        # make an otherwise valid canvas text item disappear.
         labels={
-            "snow":("WINTER","❄"),
-            "rain":("RAIN","☔"),
-            "sun":("SUMMER","☀"),
-            "leaves":("AUTUMN","🍂"),
-            "petals":("SPRING","🌸"),
+            "snow":("WINTER","*"),
+            "rain":("RAIN","~"),
+            "sun":("SUMMER","O"),
+            "leaves":("AUTUMN","<"),
+            "petals":("SPRING","+"),
         }
         label,icon=labels[mode]
         pill_w,pill_h=208,42
@@ -1277,7 +1339,7 @@ class DemoApp(tk.Tk):
         c.create_oval(px+12,py+12,px+28,py+28,fill=p["accent"],outline="")
         c.create_text(px+38,py+12,text=f"{icon}  {label}",
                       anchor="w",fill=self.TEXT,font=("Segoe UI",9,"bold"))
-        c.create_text(px+38,py+29,text=f"{temperature:g}°C  ·  LIVE ATMOSPHERE",
+        c.create_text(px+38,py+29,text=f"{temperature:g}C  ·  LIVE ATMOSPHERE",
                       anchor="w",fill=mix(self.TEXT,p["light"],.35),
                       font=("Segoe UI",8))
     def _paint_sky(self):
