@@ -1030,18 +1030,29 @@ class DemoApp(tk.Tk):
         phase = self._frame_phase
         mid_y = h / 2.0
 
-        # Soft atmospheric bands keep the animation feeling like a background
-        # rather than a particle demo. The palette stays monochrome cyan.
+        # The main UI remains cyan-monochrome, but the seasonal animation
+        # uses natural accent colours so each season is immediately readable.
+        # Dark/light theme only changes the atmospheric base and contrast.
         if self.theme == "dark":
-            bands = ("#0a171d", "#0b1a21", "#0d1e25", "#10232a", "#12272e")
-            particle = "#62dceb"
-            particle_soft = "#2daabd"
-            muted = "#8fdbe4"
+            bands = ("#08161d", "#0a1b23", "#0d2028", "#10262e", "#142c33")
+            cloud = "#3a6972"
+            light_particle = "#bfeaf0"
         else:
-            bands = ("#dff3f6", "#e4f5f7", "#e9f7f9", "#eef9fa", "#f3fbfc")
-            particle = "#079bb3"
-            particle_soft = "#45b7c7"
-            muted = "#3e8f9c"
+            bands = ("#e7f5f7", "#edf8f9", "#f2fafb", "#f6fcfc", "#fbfefe")
+            cloud = "#9ab9bf"
+            light_particle = "#6a9da5"
+
+        season_colors = {
+            "snow": ("#f3fbff", "#bfe8f2", "#8bd0dc"),
+            "rain": ("#69b7e8", "#4f9fd4", "#9bd4f0"),
+            "sun": ("#ffd34e", "#f5a623", "#fff0a3"),
+            "leaves": ("#e07a22", "#b84a16", "#f0b44d"),
+            "petals": ("#f08fb4", "#d85f8a", "#f7c2d6"),
+        }
+        particle, particle_soft, particle_glow = season_colors.get(
+            mode, ("#62dceb", "#2daabd", "#a9edf3")
+        )
+        muted = light_particle
 
         band_h = max(1, h / len(bands))
         for i, band in enumerate(bands):
@@ -1053,16 +1064,16 @@ class DemoApp(tk.Tk):
         for i in range(3):
             cx = ((w * (0.18 + i * 0.38) + phase * (0.18 + i * 0.05)) % (w + 170)) - 85
             cy = cloud_y + math.sin(phase * 0.012 + i) * 5
-            cloud = muted if self.theme == "light" else "#3a7b86"
+            cloud = cloud
             c.create_oval(cx - 48, cy - 10, cx + 30, cy + 14, fill=cloud, outline="")
             c.create_oval(cx - 18, cy - 23, cx + 42, cy + 15, fill=cloud, outline="")
             c.create_oval(cx + 18, cy - 8, cx + 70, cy + 14, fill=cloud, outline="")
 
         if mode == "snow":
             shades = {
-                "flake0": "#e8fbff", "flake1": "#bdebf2", "flake2": "#7ed4e1",
-            } if self.theme == "dark" else {
-                "flake0": "#5f9eaa", "flake1": "#7fb5bf", "flake2": "#9acbd2",
+                "flake0": season_colors["snow"][0],
+                "flake1": season_colors["snow"][1],
+                "flake2": season_colors["snow"][2],
             }
             for p in self._weather_parts:
                 x = ((p["bx"] + p["sway"] * math.sin(phase * 0.05 + p["ph"])) % 1.0) * w
