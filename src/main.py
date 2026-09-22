@@ -669,7 +669,7 @@ class DemoApp(tk.Tk):
         # the first thing seen and sets the weather mood immediately.
         sky_shell, sky_inner = self._rounded_panel(body, bg=self.BG, radius=18)
         sky_shell.pack(fill="x", pady=(0, 8))
-        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=64,
+        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=120,
                                      highlightthickness=0, bd=0)
         self._sky_canvas.pack(fill="x")
 
