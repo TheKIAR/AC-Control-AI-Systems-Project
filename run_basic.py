@@ -223,7 +223,8 @@ class BasicApp(tk.Tk):
         tk.Label(led_frame, text="FOPL POLICY", bg="#ffffff", fg="#555555",
                  font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=8, pady=(6, 2))
         led_row = tk.Frame(led_frame, bg="#ffffff")
-        led_row.pack(pady=(0, 8))
+        led_row.pack(fill="x", padx=8, pady=(0, 8))
+        led_row.grid_columnconfigure(tuple(range(11)), weight=1, uniform="leds")
         self._leds = {}
         for col, (predicate, short, color) in enumerate((
             ("AC_HIGH", "HIGH", "#0099cc"),
