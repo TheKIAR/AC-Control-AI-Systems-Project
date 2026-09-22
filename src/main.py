@@ -700,6 +700,52 @@ class DemoApp(tk.Tk):
                 width=116, height=36, radius=14
             ).pack(side="left", padx=(10, 0))
 
+        # FOPL policy LEDs, right after the controls they reflect.
+        led_shell, led_inner = self._rounded_panel(body, bg=self.BG, radius=18)
+        led_shell.pack(fill="x", pady=(0, 18))
+        tk.Label(led_inner, text="FOPL POLICY", bg=self.CARD,
+                 fg=self.MUTED, font=("Segoe UI", 9, "bold")
+                 ).pack(anchor="w", padx=16, pady=(10, 2))
+        switch_row = tk.Frame(led_inner, bg=self.CARD)
+        switch_row.pack(fill="x", padx=16, pady=(0, 6))
+        for text, var in (("Occupied", self.occupied_var),
+                          ("Night", self.night_var),
+                          ("Energy saver", self.saver_var)):
+            tk.Checkbutton(switch_row, text=text, variable=var,
+                           command=self._refresh_fopl,
+                           bg=self.CARD, fg=self.TEXT,
+                           selectcolor=self.CARD_2,
+                           activebackground=self.CARD,
+                           activeforeground=self.TEXT,
+                           font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 16))
+        led_row = tk.Frame(led_inner, bg=self.CARD)
+        led_row.pack(fill="x", padx=16, pady=(0, 12))
+        led_row.grid_columnconfigure(tuple(range(11)), weight=1, uniform="leds")
+        self._fopl_leds = {}
+        for col, (predicate, short, color) in enumerate((
+            ("AC_HIGH", "HIGH", self.ACCENT),
+            ("AC_ECO", "ECO", self.GREEN),
+            ("AC_OFF", "A-OFF", "#8a93a3"),
+            ("AC_STANDBY", "STBY", self.BLUE),
+            ("HEATER_ON", "HEAT", "#ff9a3c"),
+            ("HEATER_OFF", "H-OFF", "#8a93a3"),
+            ("LIGHTS_OFF", "L-OFF", "#8a93a3"),
+            ("DIM_LIGHTS", "DIM", "#ffd76a"),
+            ("BLINDS_DOWN", "BLIND", self.ACCENT_2),
+            ("WINDOWS_OPEN", "WIN", self.GREEN),
+            ("ALERT_OVERHEAT", "ALERT", "#ff4d5e"),
+        )):
+            cell = tk.Frame(led_row, bg=self.CARD)
+            cell.grid(row=0, column=col, sticky="nsew")
+            dot = tk.Canvas(cell, bg=self.CARD, width=22, height=22,
+                            highlightthickness=0, bd=0)
+            dot.pack()
+            item = dot.create_oval(4, 4, 18, 18, fill=self.BG,
+                                   outline=self.BORDER, width=2)
+            tk.Label(cell, text=short, bg=self.CARD, fg=self.MUTED,
+                     font=("Consolas", 7, "bold")).pack()
+            self._fopl_leds[predicate] = (dot, item, color)
+
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
         tk.Label(
@@ -745,52 +791,6 @@ class DemoApp(tk.Tk):
                  bg=self.CARD, fg=self.MUTED, font=("Consolas", 8),
                  anchor="w", justify="left").pack(fill="x", padx=18, pady=(0, 10))
 
-        # FOPL policy LEDs: one row at the bottom. The three switches
-        # drive the advisor, so every LED can actually light up.
-        led_shell, led_inner = self._rounded_panel(body, bg=self.BG, radius=18)
-        led_shell.pack(fill="x", pady=(0, 8))
-        tk.Label(led_inner, text="FOPL POLICY", bg=self.CARD,
-                 fg=self.MUTED, font=("Segoe UI", 9, "bold")
-                 ).pack(anchor="w", padx=16, pady=(10, 2))
-        switch_row = tk.Frame(led_inner, bg=self.CARD)
-        switch_row.pack(fill="x", padx=16, pady=(0, 6))
-        for text, var in (("Occupied", self.occupied_var),
-                          ("Night", self.night_var),
-                          ("Energy saver", self.saver_var)):
-            tk.Checkbutton(switch_row, text=text, variable=var,
-                           command=self._refresh_fopl,
-                           bg=self.CARD, fg=self.TEXT,
-                           selectcolor=self.CARD_2,
-                           activebackground=self.CARD,
-                           activeforeground=self.TEXT,
-                           font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 16))
-        led_row = tk.Frame(led_inner, bg=self.CARD)
-        led_row.pack(fill="x", padx=16, pady=(0, 12))
-        led_row.grid_columnconfigure(tuple(range(11)), weight=1, uniform="leds")
-        self._fopl_leds = {}
-        for col, (predicate, short, color) in enumerate((
-            ("AC_HIGH", "HIGH", self.ACCENT),
-            ("AC_ECO", "ECO", self.GREEN),
-            ("AC_OFF", "A-OFF", "#8a93a3"),
-            ("AC_STANDBY", "STBY", self.BLUE),
-            ("HEATER_ON", "HEAT", "#ff9a3c"),
-            ("HEATER_OFF", "H-OFF", "#8a93a3"),
-            ("LIGHTS_OFF", "L-OFF", "#8a93a3"),
-            ("DIM_LIGHTS", "DIM", "#ffd76a"),
-            ("BLINDS_DOWN", "BLIND", self.ACCENT_2),
-            ("WINDOWS_OPEN", "WIN", self.GREEN),
-            ("ALERT_OVERHEAT", "ALERT", "#ff4d5e"),
-        )):
-            cell = tk.Frame(led_row, bg=self.CARD)
-            cell.grid(row=0, column=col, sticky="nsew")
-            dot = tk.Canvas(cell, bg=self.CARD, width=22, height=22,
-                            highlightthickness=0, bd=0)
-            dot.pack()
-            item = dot.create_oval(4, 4, 18, 18, fill=self.BG,
-                                   outline=self.BORDER, width=2)
-            tk.Label(cell, text=short, bg=self.CARD, fg=self.MUTED,
-                     font=("Consolas", 7, "bold")).pack()
-            self._fopl_leds[predicate] = (dot, item, color)
         self._reset_chart_slots()
         self._start_pulse()
         self._schedule_weather_cycle()
