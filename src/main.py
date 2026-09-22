@@ -243,7 +243,7 @@ class DemoApp(tk.Tk):
         super().__init__()
         self.theme = "dark"
         self.title(f"AI Control System v{APP_VERSION}")
-        self.geometry("1360x980")
+        self.geometry("1360x1020")
         self.minsize(1100, 750)
         self.configure(bg=self.BG)
         self.resizable(True, True)
@@ -627,7 +627,7 @@ class DemoApp(tk.Tk):
         self.unbind_all("<MouseWheel>")
         self.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
 
-        header = ttk.Frame(self, padding=(22, 14, 22, 10), style="Root.TFrame")
+        header = ttk.Frame(self, padding=(22, 8, 22, 6), style="Root.TFrame")
         header.pack(side="top", fill="x", before=self.canvas)
 
         title_frame = ttk.Frame(header, style="Root.TFrame")
@@ -665,28 +665,19 @@ class DemoApp(tk.Tk):
         )
         self.theme_button.pack(side="right", padx=(0, 4))
 
-        # Live sky strip: the weather animation lives here, in plain sight
-        # above the controls (a full-window background would hide behind the
-        # opaque panels, which is why the old one was invisible).
-        sky_shell, sky_inner = self._rounded_panel(body, bg=self.BG, radius=18)
-        sky_shell.pack(fill="x", pady=(0, 14))
-        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=150,
-                                     highlightthickness=0, bd=0)
-        self._sky_canvas.pack(fill="x")
-
         controls_shell, controls = self._rounded_panel(body, bg=self.BG, radius=20)
-        controls_shell.pack(fill="x", pady=(0, 18), ipady=4)
+        controls_shell.pack(fill="x", pady=(0, 12), ipady=2)
 
         tk.Label(
             controls, text="Controls", bg=self.PANEL, fg=self.TEXT,
             font=("Segoe UI", 11, "bold")
-        ).pack(anchor="w", padx=18, pady=(15, 4))
+        ).pack(anchor="w", padx=18, pady=(10, 2))
 
         tk.Label(
             controls,
             text="Change the values below to update the results.",
             bg=self.PANEL, fg=self.MUTED, font=("Segoe UI", 9)
-        ).pack(anchor="w", padx=18, pady=(0, 14))
+        ).pack(anchor="w", padx=18, pady=(0, 8))
 
         self._add_slider(
             controls, "FUZZY TEMPERATURE", self.temp_var, 10, 35, "°C",
@@ -716,26 +707,26 @@ class DemoApp(tk.Tk):
         combo.bind("<<ComboboxSelected>>", self._on_settings_changed)
 
         action_row = tk.Frame(controls, bg=self.PANEL)
-        action_row.pack(fill="x", padx=18, pady=(0, 16))
+        action_row.pack(fill="x", padx=18, pady=(0, 10))
         RoundedButton(
             action_row, text="Run System", command=self.run_demo,
             bg=self.ACCENT, fg="#ffffff", hover="#6a9fff",
-            width=128, height=40, radius=16
+            width=128, height=34, radius=16
         ).pack(side="left")
         RoundedButton(
             action_row, text="Reset", command=self.reset_controls,
             bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
-            width=88, height=40, radius=16
+            width=88, height=34, radius=16
         ).pack(side="left", padx=(10, 0))
         RoundedButton(
             action_row, text="Export", command=self.export_report,
             bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
-            width=88, height=40, radius=16
+            width=88, height=34, radius=16
         ).pack(side="left", padx=(10, 0))
         RoundedButton(
             action_row, text="Auto Mode", command=self._toggle_auto_mode,
             bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
-            width=108, height=40, radius=16
+            width=108, height=34, radius=16
         ).pack(side="left", padx=(10, 0))
         tk.Label(
             action_row, textvariable=self.fuzzy_result_var,
@@ -743,34 +734,26 @@ class DemoApp(tk.Tk):
             font=("Segoe UI", 10, "bold")
         ).pack(side="right")
 
-        preset_row = tk.Frame(controls, bg=self.PANEL)
-        preset_row.pack(fill="x", padx=18, pady=(0, 16))
-        tk.Label(
-            preset_row, text="Presets", bg=self.PANEL, fg=self.MUTED,
-            font=("Segoe UI", 9, "bold")
-        ).pack(side="left")
-        # Each preset is a full scenario: temperature + RL episodes +
-        # data points, so one click reconfigures all three AI modules.
         for text, temp, episodes, points in (
             ("Cold 16°C", 16, 8, 10),
             ("Normal 22°C", 22, 5, 5),
             ("Hot 30°C", 30, 12, 15),
         ):
             RoundedButton(
-                preset_row, text=text,
+                action_row, text=text,
                 command=lambda t=temp, e=episodes, p=points, label=text: self._apply_preset_value(label, t, e, p),
                 bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
-                width=116, height=36, radius=14
+                width=104, height=34, radius=14
             ).pack(side="left", padx=(10, 0))
 
         # FOPL policy LEDs, right after the controls they reflect.
         led_shell, led_inner = self._rounded_panel(body, bg=self.BG, radius=18)
-        led_shell.pack(fill="x", pady=(0, 18))
+        led_shell.pack(fill="x", pady=(0, 12))
         tk.Label(led_inner, text="FOPL POLICY", bg=self.CARD,
                  fg=self.MUTED, font=("Segoe UI", 9, "bold")
-                 ).pack(anchor="w", padx=16, pady=(10, 2))
+                 ).pack(anchor="w", padx=16, pady=(8, 2))
         switch_row = tk.Frame(led_inner, bg=self.CARD)
-        switch_row.pack(fill="x", padx=16, pady=(0, 6))
+        switch_row.pack(fill="x", padx=16, pady=(0, 4))
         for text, var in (("Occupied", self.occupied_var),
                           ("Night", self.night_var),
                           ("Energy saver", self.saver_var)):
@@ -782,7 +765,7 @@ class DemoApp(tk.Tk):
                            activeforeground=self.TEXT,
                            font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 16))
         led_row = tk.Frame(led_inner, bg=self.CARD)
-        led_row.pack(fill="x", padx=16, pady=(0, 12))
+        led_row.pack(fill="x", padx=16, pady=(0, 8))
         led_row.grid_columnconfigure(tuple(range(11)), weight=1, uniform="leds")
         self._fopl_leds = {}
         for col, (predicate, short, color) in enumerate((
@@ -814,7 +797,7 @@ class DemoApp(tk.Tk):
             self._fopl_leds[predicate] = (dot, halo, core, spec, name_label, color)
 
         output_title = tk.Frame(body, bg=self.BG)
-        output_title.pack(fill="x", pady=(0, 10))
+        output_title.pack(fill="x", pady=(0, 6))
         tk.Label(
             output_title, text="Results", bg=self.BG, fg=self.TEXT,
             font=("Segoe UI", 12, "bold")
@@ -860,6 +843,13 @@ class DemoApp(tk.Tk):
         self._reset_chart_slots()
         self._start_pulse()
         self._schedule_weather_cycle()
+
+        # Live sky strip, parked at the bottom so the outputs sit higher.
+        sky_shell, sky_inner = self._rounded_panel(body, bg=self.BG, radius=18)
+        sky_shell.pack(fill="x", pady=(0, 8))
+        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=64,
+                                     highlightthickness=0, bd=0)
+        self._sky_canvas.pack(fill="x")
 
     @staticmethod
     def _blend(color_a, color_b, t):
@@ -1427,7 +1417,7 @@ class DemoApp(tk.Tk):
 
     def _add_slider(self, parent, label, variable, minimum, maximum, suffix, callback):
         row = tk.Frame(parent, bg=self.PANEL)
-        row.pack(fill="x", padx=18, pady=7)
+        row.pack(fill="x", padx=18, pady=4)
 
         top = tk.Frame(row, bg=self.PANEL)
         top.pack(fill="x")
@@ -1441,6 +1431,13 @@ class DemoApp(tk.Tk):
             font=("Segoe UI", 11, "bold")
         )
         value_label.pack(side="right")
+        for symbol, step in (("−", -1), ("+", 1)):
+            RoundedButton(
+                top, text=symbol,
+                command=lambda s=step: self._step_value(variable, s, minimum, maximum, callback),
+                bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
+                width=30, height=22, radius=10
+            ).pack(side="right", padx=(6, 0))
 
         def update_value(*_):
             try:
@@ -1465,29 +1462,7 @@ class DemoApp(tk.Tk):
             variable=variable, command=on_scale,
             style="Modern.Horizontal.TScale"
         )
-        scale.pack(fill="x", pady=(7, 0))
-        self._add_step_buttons(row, variable, minimum, maximum, callback)
-
-    def _add_step_buttons(self, parent, variable, minimum, maximum, callback):
-        buttons = tk.Frame(parent, bg=self.PANEL)
-        buttons.pack(fill="x", pady=(3, 0))
-
-        RoundedButton(
-            buttons, text="−",
-            command=lambda: self._step_value(variable, -1, minimum, maximum, callback),
-            bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
-            width=42, height=32, radius=13
-        ).pack(side="left")
-        RoundedButton(
-            buttons, text="+",
-            command=lambda: self._step_value(variable, 1, minimum, maximum, callback),
-            bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
-            width=42, height=32, radius=13
-        ).pack(side="left", padx=(6, 0))
-        tk.Label(
-            buttons, text=f"INTEGER STEP  /  {minimum}—{maximum}",
-            bg=self.PANEL, fg="#4f607b", font=("Segoe UI", 8)
-        ).pack(side="right")
+        scale.pack(fill="x", pady=(4, 0))
 
     def _step_value(self, variable, amount, minimum, maximum, callback):
         value = max(minimum, min(maximum, int(variable.get()) + amount))
@@ -1532,7 +1507,7 @@ class DemoApp(tk.Tk):
         widget.pack(fill="both", expand=True)
         return canvas
 
-    def _make_figure(self, width=5, height=3.4):
+    def _make_figure(self, width=5, height=2.5):
         fig = Figure(figsize=(width, height), dpi=100, facecolor=self.CARD)
         ax = fig.add_subplot(111)
         ax.set_facecolor(self.CARD)
@@ -1582,7 +1557,7 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
-        fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 3.4)
+        fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 2.5)
 
         import numpy as np # type: ignore
 
@@ -1685,7 +1660,7 @@ class DemoApp(tk.Tk):
                     child.destroy()
                 except Exception:
                     pass
-            fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 3.4)
+            fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 2.5)
             if tag:
                 setattr(self, f"_{tag}_fig", fig)
                 setattr(self, f"_{tag}_ax", ax)
