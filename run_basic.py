@@ -194,30 +194,51 @@ class BasicApp(tk.Tk):
         fig, ax = self._plain_figure("Fuzzy decisions")
         bars = ax.bar(temps, values,
                       color=["#000000" if t == result["temperature"] else "#999999"
-                             for t in temps])
+                             for t in temps],
+                      edgecolor="#ffffff", linewidth=0.6)
         ax.set_xlabel("Temperature (C)", fontsize=8, color="#000000")
         ax.set_ylabel("Decision", fontsize=8, color="#000000")
         ax.set_yticks([1, 2, 3])
         ax.set_yticklabels(["Increase", "Maintain", "Decrease"], fontsize=7)
+        ax.grid(axis="y", linestyle=":", alpha=0.5, color="#888888")
+        current = levels[result["fuzzy_result"]]
+        ax.annotate(result["fuzzy_result"].replace(" Temperature", ""),
+                    xy=(result["temperature"], current),
+                    xytext=(0, 12), textcoords="offset points",
+                    ha="center", fontsize=8, fontweight="bold", color="#000000")
         fig.tight_layout()
         self._show_figure(self.fuzzy_host, fig)
 
         rewards = result["rewards"]
+        episodes = list(range(1, len(rewards) + 1))
+        average = sum(rewards) / len(rewards)
+        best_i = max(range(len(rewards)), key=lambda i: rewards[i])
         fig, ax = self._plain_figure("RL rewards")
-        ax.plot(list(range(1, len(rewards) + 1)), rewards, marker="o",
-                color="#0000cc")
+        ax.plot(episodes, rewards, marker="o", color="#0000cc", label="reward")
+        ax.axhline(average, linestyle="--", color="#888888", linewidth=1.2,
+                   label=f"average {average:.2f}")
+        ax.scatter([episodes[best_i]], [rewards[best_i]], color="#000000",
+                   s=80, zorder=5, label=f"best {rewards[best_i]:.2f}")
+        ax.scatter([episodes[best_i]], [rewards[best_i]], color="#0000cc",
+                   s=34, zorder=6)
         ax.set_xlabel("Episode", fontsize=8, color="#000000")
         ax.set_ylabel("Reward", fontsize=8, color="#000000")
         ax.grid(True, linestyle="--", alpha=0.4, color="#888888")
+        ax.legend(fontsize=7, loc="best", framealpha=0.9)
         fig.tight_layout()
         self._show_figure(self.rl_host, fig)
 
         y_values = result.get("flat", [0.0])
+        mean_val = sum(y_values) / len(y_values)
         fig, ax = self._plain_figure("Data output")
-        ax.plot(list(range(len(y_values))), y_values, marker="o", color="#007700")
+        ax.plot(list(range(len(y_values))), y_values, marker="o", color="#007700",
+                label="value")
+        ax.axhline(mean_val, linestyle="--", color="#888888", linewidth=1.2,
+                   label=f"mean {mean_val:.2f}")
         ax.set_xlabel("Sample", fontsize=8, color="#000000")
         ax.set_ylabel("Value", fontsize=8, color="#000000")
         ax.grid(True, linestyle="--", alpha=0.4, color="#888888")
+        ax.legend(fontsize=7, loc="best", framealpha=0.9)
         fig.tight_layout()
         self._show_figure(self.data_host, fig)
 
