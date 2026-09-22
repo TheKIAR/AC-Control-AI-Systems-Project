@@ -204,9 +204,12 @@ class BasicApp(tk.Tk):
         headline = {"Increase Temperature": "▲ INCREASE",
                     "Maintain Temperature": "● MAINTAIN",
                     "Decrease Temperature": "▼ DECREASE"}[result["fuzzy_result"]]
-        ax.text(0.5, 0.94, headline, transform=ax.transAxes,
-                ha="center", va="top", fontsize=13, fontweight="bold",
-                color="#000000")
+        # Pinned top-left above headroom the bars never reach (all tall
+        # Decrease bars stand on the right), so the verdict can never hide
+        # behind a bar the way a centered overlay did.
+        ax.set_ylim(0, 3.7)
+        ax.text(15.8, 3.32, headline, ha="left", va="center",
+                fontsize=12, fontweight="bold", color="#000000")
         fig.tight_layout()
         self._show_figure(self.fuzzy_host, fig)
 
