@@ -297,6 +297,10 @@ class DemoApp(tk.Tk):
             splash.title("AI Control System")
             splash.configure(bg=self.BG)
             splash.overrideredirect(True)
+            try:
+                splash.transient(self)
+            except Exception:
+                pass
             w, h = 360, 150
             try:
                 x = (splash.winfo_screenwidth() - w) // 2
