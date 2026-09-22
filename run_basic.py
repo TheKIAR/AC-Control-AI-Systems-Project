@@ -353,11 +353,11 @@ class BasicApp(tk.Tk):
         row.pack(fill="x", pady=2)
         tk.Label(row, text=label, bg="#ffffff", fg="#000000",
                  width=22, anchor="w").pack(side="left")
+        tk.Label(row, textvariable=variable, bg="#ffffff", fg="#000000",
+                 width=4, anchor="e").pack(side="right")
         tk.Scale(row, from_=minimum, to=maximum, orient="horizontal",
                  variable=variable, bg="#ffffff", fg="#000000",
-                 highlightthickness=0, length=300).pack(side="left")
-        tk.Label(row, textvariable=variable, bg="#ffffff", fg="#000000",
-                 width=4).pack(side="left")
+                 highlightthickness=0).pack(side="left", fill="x", expand=True)
 
     def _show(self, text):
         self.output.configure(state="normal")
