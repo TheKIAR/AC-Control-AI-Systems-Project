@@ -32,6 +32,7 @@ try:
     from reinforcement_learning.trainer import RLTrainer
     from data_driven.generator import DataGenerator
     from data_driven.pipeline import DataPipeline
+    from version import __version__ as APP_VERSION
 except ImportError:
     from src.fuzzy_logic.fuzzy_system import FuzzySystem
     from src.fopl.advisor import build_advisor
@@ -40,6 +41,13 @@ except ImportError:
     from src.reinforcement_learning.trainer import RLTrainer
     from src.data_driven.generator import DataGenerator
     from src.data_driven.pipeline import DataPipeline
+    try:
+        from version import __version__ as APP_VERSION
+    except ImportError:
+        try:
+            from src.version import __version__ as APP_VERSION
+        except ImportError:
+            APP_VERSION = "1.0.0"
 
 
 def compute(temperature=22, episodes=5, points=5, method="supervised",
@@ -119,7 +127,7 @@ class BasicApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("AI Systems Project (Basic)")
+        self.title(f"AI Systems Project (Basic) v{APP_VERSION}")
         self.geometry("1020x760")
         self.minsize(760, 600)
         self.configure(bg="#ffffff")

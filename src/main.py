@@ -37,6 +37,7 @@ try:
     from reinforcement_learning.trainer import RLTrainer
     from data_driven.generator import DataGenerator
     from data_driven.pipeline import DataPipeline
+    from version import __version__ as APP_VERSION
 except ImportError:
     from src.fuzzy_logic.fuzzy_system import FuzzySystem
     from src.fopl.advisor import build_advisor
@@ -45,6 +46,13 @@ except ImportError:
     from src.reinforcement_learning.trainer import RLTrainer
     from src.data_driven.generator import DataGenerator
     from src.data_driven.pipeline import DataPipeline
+    try:
+        from version import __version__ as APP_VERSION
+    except ImportError:
+        try:
+            from src.version import __version__ as APP_VERSION
+        except ImportError:
+            APP_VERSION = "1.0.0"
 
 
 def normalize_values(items):
@@ -203,7 +211,7 @@ class DemoApp(tk.Tk):
 
         super().__init__()
         self.theme = "dark"
-        self.title("AI Control System")
+        self.title(f"AI Control System v{APP_VERSION}")
         self.geometry("1360x980")
         self.minsize(1100, 750)
         self.configure(bg=self.BG)

@@ -106,6 +106,12 @@ trace. The basic GUI (`python run_basic.py`) is a plain white window with the
 same engine: sliders, three charts with best/average/mean guides, a text
 readout, advisor tick-boxes, and the LED row — no animations.
 
+![Full GUI](assets/gui_main.png)
+![Basic GUI](assets/gui_basic.png)
+
+The current release is v1.0.0 (shown in both window title bars, mirrored in
+`setup.py`). For the viva walkthrough see [docs/VIVA_DEMO.md](docs/VIVA_DEMO.md).
+
 The GUI lets you adjust temperature, RL episode count, data-point count, and the data-generation method. The Export button saves charts, a text summary, and the logic trace into the local `outputs/` directory.
 
 ## Testing

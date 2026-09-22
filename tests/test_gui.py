@@ -11,7 +11,7 @@ def test_gui_builds_and_theme_toggles():
     app = DemoApp()
     try:
         app.update_idletasks()
-        assert app.title() == "AI Control System"
+        assert app.title().startswith("AI Control System")
         assert app.temp_var.get() == 22
         assert app.rl_stats_var.get() != ""
         assert app.timeline_var.get() != ""
