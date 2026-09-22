@@ -8,6 +8,33 @@ for p in (str(SRC), str(ROOT)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+
+def _resource_path(*parts):
+    base = getattr(sys, "_MEIPASS", None)
+    if base:
+        return Path(base).joinpath(*parts)
+    return ROOT.joinpath(*parts)
+
+
+def _apply_basic_icon(window):
+    try:
+        png = _resource_path("assets", "app_basic.png")
+        if png.exists():
+            img = tk.PhotoImage(file=str(png))
+            window.iconphoto(True, img)
+            window._icon_image = img
+            return True
+    except Exception:
+        pass
+    try:
+        ico = _resource_path("assets", "app_basic.ico")
+        if ico.exists():
+            window.iconbitmap(str(ico))
+            return True
+    except Exception:
+        pass
+    return False
+
 try:
     import tkinter as tk
     TK_AVAILABLE = True
@@ -131,12 +158,6 @@ class BasicApp(tk.Tk):
         self.geometry("1020x760")
         self.minsize(760, 600)
         self.configure(bg="#ffffff")
-        try:
-            icon_path = Path(__file__).resolve().parent / "assets" / "app_basic.ico"
-            if icon_path.exists():
-                self.iconbitmap(str(icon_path))
-        except Exception:
-            pass
 
         self.temp_var = tk.IntVar(value=22)
         self.rl_var = tk.IntVar(value=5)
@@ -230,6 +251,11 @@ class BasicApp(tk.Tk):
             self._leds[predicate] = (dot, item, color)
 
         self.run_all()
+        try:
+            self.update_idletasks()
+        except Exception:
+            pass
+        _apply_basic_icon(self)
 
     def _plain_figure(self, title):
         fig = Figure(figsize=(3.1, 2.6), dpi=100, facecolor="#ffffff")

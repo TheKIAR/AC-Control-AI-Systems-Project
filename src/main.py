@@ -10,6 +10,37 @@ for _p in (str(_SRC_DIR), str(_PROJECT_ROOT)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+
+def _resource_path(*parts):
+    # Frozen exe: assets ride in the bundle; dev run: they sit at the root.
+    base = getattr(sys, "_MEIPASS", None)
+    if base:
+        return Path(base).joinpath(*parts)
+    return _PROJECT_ROOT.joinpath(*parts)
+
+
+def _apply_window_icon(window):
+    # iconphoto (PNG) renders reliably on Windows; iconbitmap (.ico) is the
+    # fallback. Must run on a mapped window: withdraw/deiconify cycles reset
+    # it, which is why title bars kept showing the Python feather.
+    try:
+        png = _resource_path("assets", "app.png")
+        if png.exists():
+            img = tk.PhotoImage(file=str(png))
+            window.iconphoto(True, img)
+            window._icon_image = img  # keep a reference or Tk drops it
+            return True
+    except Exception:
+        pass
+    try:
+        ico = _resource_path("assets", "app.ico")
+        if ico.exists():
+            window.iconbitmap(str(ico))
+            return True
+    except Exception:
+        pass
+    return False
+
 try:
     import tkinter as tk
     from tkinter import ttk, messagebox
@@ -216,12 +247,6 @@ class DemoApp(tk.Tk):
         self.minsize(1100, 750)
         self.configure(bg=self.BG)
         self.resizable(True, True)
-        try:
-            icon_path = _PROJECT_ROOT / "assets" / "app.ico"
-            if icon_path.exists():
-                self.iconbitmap(str(icon_path))
-        except Exception:
-            pass
 
         self.style = ttk.Style(self)
         self.style.theme_use("clam")
@@ -336,6 +361,11 @@ class DemoApp(tk.Tk):
             self.deiconify()
         except Exception:
             pass
+        try:
+            self.update_idletasks()
+        except Exception:
+            pass
+        _apply_window_icon(self)
 
     def _configure_styles(self):
         self.style.configure("Root.TFrame", background=self.BG)
