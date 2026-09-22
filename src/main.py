@@ -665,6 +665,14 @@ class DemoApp(tk.Tk):
         )
         self.theme_button.pack(side="right", padx=(0, 4))
 
+        # Live sky strip back on top: it costs some scroll room, but it is
+        # the first thing seen and sets the weather mood immediately.
+        sky_shell, sky_inner = self._rounded_panel(body, bg=self.BG, radius=18)
+        sky_shell.pack(fill="x", pady=(0, 8))
+        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=64,
+                                     highlightthickness=0, bd=0)
+        self._sky_canvas.pack(fill="x")
+
         controls_shell, controls = self._rounded_panel(body, bg=self.BG, radius=20)
         controls_shell.pack(fill="x", pady=(0, 12), ipady=2)
 
@@ -734,17 +742,19 @@ class DemoApp(tk.Tk):
             font=("Segoe UI", 10, "bold")
         ).pack(side="right")
 
-        for text, temp, episodes, points in (
+        # Packed right in reverse so they read Cold/Normal/Hot left-to-right
+        # beside the readout, visually apart from the Run/Reset/Export group.
+        for text, temp, episodes, points in reversed((
             ("Cold 16°C", 16, 8, 10),
             ("Normal 22°C", 22, 5, 5),
             ("Hot 30°C", 30, 12, 15),
-        ):
+        )):
             RoundedButton(
                 action_row, text=text,
                 command=lambda t=temp, e=episodes, p=points, label=text: self._apply_preset_value(label, t, e, p),
                 bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
                 width=104, height=34, radius=14
-            ).pack(side="left", padx=(10, 0))
+            ).pack(side="right", padx=(10, 0))
 
         # FOPL policy LEDs, right after the controls they reflect.
         led_shell, led_inner = self._rounded_panel(body, bg=self.BG, radius=18)
@@ -845,10 +855,6 @@ class DemoApp(tk.Tk):
         self._schedule_weather_cycle()
 
         # Live sky strip, parked at the bottom so the outputs sit higher.
-        sky_shell, sky_inner = self._rounded_panel(body, bg=self.BG, radius=18)
-        sky_shell.pack(fill="x", pady=(0, 8))
-        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=64,
-                                     highlightthickness=0, bd=0)
         self._sky_canvas.pack(fill="x")
 
     @staticmethod
