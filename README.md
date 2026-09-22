@@ -63,6 +63,9 @@ AI-Systems-Project/
 ├── run_gui.py
 ├── run_gui.bat
 ├── run_gui.ps1
+├── run_basic.py
+├── run_basic.bat
+├── run_basic.ps1
 ├── setup.py
 └── README.md
 ```
@@ -94,7 +97,16 @@ You can also run:
 python src/main.py --console
 ```
 
-The GUI lets you adjust temperature, RL episode count, data-point count, and the data-generation method. Running the demo generates charts and a text summary in the local `outputs/` directory.
+There are two interfaces. The full GUI (`python run_gui.py`) has dark/light
+themes, one-row chart outputs with value legends, Cold/Normal/Hot presets that
+reconfigure temperature plus RL episodes plus data points, a Logic Advisor
+section with room tick-boxes, an 11-LED FOPL policy row with switches, a live
+weather sky, and an Export button that zips charts plus summary plus logic
+trace. The basic GUI (`python run_basic.py`) is a plain white window with the
+same engine: sliders, three charts with best/average/mean guides, a text
+readout, advisor tick-boxes, and the LED row — no animations.
+
+The GUI lets you adjust temperature, RL episode count, data-point count, and the data-generation method. The Export button saves charts, a text summary, and the logic trace into the local `outputs/` directory.
 
 ## Testing
 
@@ -110,7 +122,7 @@ The tests cover fuzzy decisions and memberships, reinforcement-learning behavior
 
 ## GUI Preview & AI Flow
 
-The desktop interface uses a rounded cyan-monochrome design with dark/light themes, animated weather visuals, live module indicators, and an AI decision timeline.
+The desktop interface uses a rounded cyan-monochrome design with dark/light themes, animated weather visuals, live module indicators, and FOPL policy LEDs.
 
 The main interaction flow is:
 
@@ -131,7 +143,7 @@ Integrated Result
 ### Interactive features
 
 - **Auto Mode** — temperature changes trigger a short debounce and then refresh the full AI pipeline.
-- **AI Decision Timeline** — shows the current temperature, fuzzy decision, FOPL policy, RL reward statistics, data statistics, and final action in one line.
+- **FOPL policy LEDs** — eleven action lights with room switches, so every policy output can be demonstrated live.
 - **Module status indicators** — live status for Fuzzy, FOPL, RL, and Data modules.
 - **RL statistics** — episode count, best reward, average reward, and latest reward.
 - **Export Report** — packages charts, summary information, and FOPL inference into a ZIP file.
@@ -139,7 +151,12 @@ Integrated Result
 
 ## Windows Executable
 
-The repository includes an application icon and Windows launcher scripts. If you want to distribute a standalone executable, build it locally with PyInstaller rather than committing the generated `build/` or `dist/` directories.
+Two launchers ship in `dist/` (built locally, never committed):
+
+- `AISystemsProject.exe` — the full GUI (themes, animations, LEDs, export).
+- `AISystemsProjectBasic.exe` — the plain white GUI (same engine, no animations).
+
+The repository includes an application icon and Windows launcher scripts (`run_gui.bat/.ps1`, `run_basic.bat/.ps1`). If you want to redistribute, rebuild locally with PyInstaller rather than committing the generated `build/` or `dist/` directories.
 
 ## Notes
 
