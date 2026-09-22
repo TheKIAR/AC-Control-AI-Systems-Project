@@ -783,8 +783,7 @@ class DemoApp(tk.Tk):
                            activeforeground=self.TEXT,
                            font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 16))
         led_row = tk.Frame(led_inner, bg=self.CARD)
-        led_row.pack(fill="x", padx=16, pady=(0, 12))
-        led_row.grid_columnconfigure(tuple(range(11)), weight=1, uniform="leds")
+        led_row.pack(pady=(0, 12))
         self._fopl_leds = {}
         for col, (predicate, short, color) in enumerate((
             ("AC_HIGH", "HIGH", self.ACCENT),
