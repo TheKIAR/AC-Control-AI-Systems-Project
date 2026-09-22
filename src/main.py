@@ -196,15 +196,6 @@ class RoundedPanel(tk.Frame):
         self.inner.pack(fill="both", expand=True, padx=self._inset, pady=self._inset)
         self.bind("<Configure>", self._redraw)
 
-    def retint(self, bg):
-        # Repaint the shell background (e.g. weather tint) without rebuilding.
-        try:
-            self.configure(bg=bg)
-            self._canvas.configure(bg=bg)
-            self._redraw()
-        except Exception:
-            pass
-
     def _redraw(self, event=None):
         w = max(self.winfo_width(), 4)
         h = max(self.winfo_height(), 4)
@@ -287,7 +278,7 @@ class DemoApp(tk.Tk):
         self._fitted_width = 0
         self._last_result = None
         self._fade_gen = 0
-        self._weather = None  # first paint spawns + tints immediately
+        self._weather = "sun"
         self._weather_parts = []
         self._weather_job = None
         self._sky_canvas = None
@@ -615,7 +606,6 @@ class DemoApp(tk.Tk):
         return outer, outer.inner
 
     def _build_ui(self):
-        self._bg_shells = []
         self._create_frame_animation()
         self.canvas = tk.Canvas(self, bg=self.BG, highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
@@ -679,14 +669,12 @@ class DemoApp(tk.Tk):
         # the first thing seen and sets the weather mood immediately.
         sky_shell, sky_inner = self._rounded_panel(body, bg=self.BG, radius=18)
         sky_shell.pack(fill="x", pady=(0, 8))
-        self._bg_shells.append(sky_shell)
-        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=150,
+        self._sky_canvas = tk.Canvas(sky_inner, bg=self.SKY, height=120,
                                      highlightthickness=0, bd=0)
         self._sky_canvas.pack(fill="x")
 
         controls_shell, controls = self._rounded_panel(body, bg=self.BG, radius=20)
         controls_shell.pack(fill="x", pady=(0, 12), ipady=2)
-        self._bg_shells.append(controls_shell)
 
         tk.Label(
             controls, text="Controls", bg=self.PANEL, fg=self.TEXT,
@@ -771,7 +759,6 @@ class DemoApp(tk.Tk):
         # FOPL policy LEDs, right after the controls they reflect.
         led_shell, led_inner = self._rounded_panel(body, bg=self.BG, radius=18)
         led_shell.pack(fill="x", pady=(0, 12))
-        self._bg_shells.append(led_shell)
         tk.Label(led_inner, text="FOPL POLICY", bg=self.CARD,
                  fg=self.MUTED, font=("Segoe UI", 9, "bold")
                  ).pack(anchor="w", padx=16, pady=(8, 2))
@@ -821,14 +808,12 @@ class DemoApp(tk.Tk):
 
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 6))
-        self._bg_shells.append(output_title)
         tk.Label(
             output_title, text="Results", bg=self.BG, fg=self.TEXT,
             font=("Segoe UI", 12, "bold")
         ).pack(side="left")
         self.module_status_frame = tk.Frame(output_title, bg=self.BG)
         self.module_status_frame.pack(side="right")
-        self._bg_shells.append(self.module_status_frame)
         for name in ("FUZZY", "FOPL", "RL", "DATA"):
             label = tk.Label(
                 self.module_status_frame, text=f"● {name}",
@@ -1071,43 +1056,6 @@ class DemoApp(tk.Tk):
                 })
         self._weather = mode
         self._weather_parts = parts
-        self._apply_weather_tint()
-
-    def _apply_weather_tint(self):
-        # Wash the app background in the current weather so the whole window
-        # feels the condition, not just the sky strip. Subtle on purpose.
-        try:
-            base = self.THEMES.get(self.theme, {}).get("BG", getattr(self, "BG", "#0d1117"))
-            tint = {"snow": "#3f6f9f", "rain": "#3f8fa3", "sun": "#c98a2e",
-                    "leaves": "#7a6a35", "petals": "#9f6a8f"}.get(
-                        getattr(self, "_weather", None))
-            bg = self._blend(base, tint, 0.22) if tint else base
-            self.style.configure("Root.TFrame", background=bg)
-            for name in ("canvas", "output_grid"):
-                widget = getattr(self, name, None)
-                try:
-                    if widget is not None and widget.winfo_exists():
-                        widget.configure(bg=bg)
-                except Exception:
-                    pass
-            for shell in getattr(self, "_bg_shells", None) or []:
-                try:
-                    if shell is None or not shell.winfo_exists():
-                        continue
-                    if hasattr(shell, "retint"):
-                        shell.retint(bg)
-                    else:
-                        shell.configure(bg=bg)
-                        for child in shell.winfo_children():
-                            try:
-                                if isinstance(child, tk.Label):
-                                    child.configure(bg=bg)
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
-        except Exception:
-            pass
 
     def _paint_weather(self, c, w, h):
         c.delete("all")
