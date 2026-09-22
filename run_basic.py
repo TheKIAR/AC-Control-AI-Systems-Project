@@ -123,6 +123,12 @@ class BasicApp(tk.Tk):
         self.geometry("1020x760")
         self.minsize(760, 600)
         self.configure(bg="#ffffff")
+        try:
+            icon_path = Path(__file__).resolve().parent / "assets" / "app.ico"
+            if icon_path.exists():
+                self.iconbitmap(str(icon_path))
+        except Exception:
+            pass
 
         self.temp_var = tk.IntVar(value=22)
         self.rl_var = tk.IntVar(value=5)

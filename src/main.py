@@ -208,6 +208,12 @@ class DemoApp(tk.Tk):
         self.minsize(1100, 750)
         self.configure(bg=self.BG)
         self.resizable(True, True)
+        try:
+            icon_path = _PROJECT_ROOT / "assets" / "app.ico"
+            if icon_path.exists():
+                self.iconbitmap(str(icon_path))
+        except Exception:
+            pass
 
         self.style = ttk.Style(self)
         self.style.theme_use("clam")
@@ -2075,6 +2081,11 @@ class DemoApp(tk.Tk):
                 messagebox.showerror("Export failed", f"{type(exc).__name__}: {exc}")
 
     def _set_error(self, text):
+        for label in getattr(self, "module_status_labels", {}).values():
+            try:
+                label.configure(fg=self.RED)
+            except Exception:
+                pass
         for host in (self.fuzzy_chart, self.rl_chart, self.data_chart):
             for child in host.winfo_children():
                 child.destroy()
