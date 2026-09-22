@@ -138,13 +138,14 @@ Integrated Results and Visualizations
 
 The interface also includes:
 
-- Cold / Normal / Hot presets;
+- Cold / Normal / Hot presets that reconfigure temperature, RL episodes and data points together;
 - Reset controls;
 - dark and light themes;
 - rounded modern controls;
-- animated visual elements;
+- animated visual elements with hover value readouts on every chart;
+- keyboard shortcuts (arrows, R, Esc);
 - live module-status indicators;
-- an AI decision timeline;
+- 11-LED FOPL policy row with room switches;
 - RL reward statistics;
 - Auto Mode; and
 - report export.

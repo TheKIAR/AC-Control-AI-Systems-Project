@@ -685,6 +685,11 @@ class DemoApp(tk.Tk):
             controls,
             text="Change the values below to update the results.",
             bg=self.PANEL, fg=self.MUTED, font=("Segoe UI", 9)
+        ).pack(anchor="w", padx=18, pady=(0, 2))
+        tk.Label(
+            controls,
+            text="Keys: ↑/↓ temp · ←/→ episodes · R run · Esc reset",
+            bg=self.PANEL, fg=self.MUTED, font=("Consolas", 8)
         ).pack(anchor="w", padx=18, pady=(0, 8))
 
         self._add_slider(
@@ -1501,7 +1506,7 @@ class DemoApp(tk.Tk):
         host.pack(fill="both", expand=True, padx=6, pady=(0, 8))
         return host
 
-    def _embed_canvas(self, fig, host):
+    def _embed_canvas(self, fig, host, hover_fmt=None):
         # A freshly created Tk canvas paints default white for one
         # event-loop cycle before matplotlib blits into it - that is the
         # white box flashing on every animation frame. Painting the raw
@@ -1511,6 +1516,47 @@ class DemoApp(tk.Tk):
         widget = canvas.get_tk_widget()
         widget.configure(bg=self.CARD, highlightthickness=0, bd=0)
         widget.pack(fill="both", expand=True)
+        if hover_fmt is not None:
+            # Hover readout: one hidden annotation per axes, moved on
+            # motion and parked invisible on leave. draw_idle coalesces
+            # the rapid motion events.
+            try:
+                ax = fig.axes[0]
+                tip = ax.annotate(
+                    "", xy=(0, 0), xytext=(12, 12),
+                    textcoords="offset points", fontsize=8, color=self.TEXT,
+                    bbox=dict(boxstyle="round,pad=0.3", fc=self.CARD_2,
+                              ec=self.BORDER, alpha=0.95),
+                )
+                tip.set_visible(False)
+
+                def on_move(event, ax=ax, tip=tip):
+                    try:
+                        if event.inaxes is not ax or event.xdata is None:
+                            if tip.get_visible():
+                                tip.set_visible(False)
+                                canvas.draw_idle()
+                            return
+                        tip.set_text(hover_fmt(event.xdata, event.ydata))
+                        tip.xy = (event.xdata, event.ydata)
+                        if not tip.get_visible():
+                            tip.set_visible(True)
+                        canvas.draw_idle()
+                    except Exception:
+                        pass
+
+                def on_leave(_event):
+                    try:
+                        if tip.get_visible():
+                            tip.set_visible(False)
+                            canvas.draw_idle()
+                    except Exception:
+                        pass
+
+                canvas.mpl_connect("motion_notify_event", on_move)
+                canvas.mpl_connect("axes_leave_event", on_leave)
+            except Exception:
+                pass
         return canvas
 
     def _make_figure(self, width=5, height=2.5):
@@ -1605,7 +1651,8 @@ class DemoApp(tk.Tk):
         self._fuzzy_ax = ax
         self._fuzzy_marker = marker
         self._fuzzy_glow = glow
-        self._fuzzy_canvas = self._embed_canvas(fig, self.fuzzy_chart)
+        self._fuzzy_canvas = self._embed_canvas(
+            fig, self.fuzzy_chart, hover_fmt=lambda x, y: f"{x:.0f}°C")
 
     def _schedule_refit(self):
         # Debounced: after a resize/fullscreen settles, rebuild the figures
@@ -1670,7 +1717,12 @@ class DemoApp(tk.Tk):
             if tag:
                 setattr(self, f"_{tag}_fig", fig)
                 setattr(self, f"_{tag}_ax", ax)
-                setattr(self, f"_{tag}_canvas", self._embed_canvas(fig, parent))
+                if tag == "rl":
+                    hover = lambda x, y: f"ep {x:.0f} · {y:.2f}"
+                else:
+                    hover = lambda x, y: f"#{x:.0f} · {y:.2f}"
+                setattr(self, f"_{tag}_canvas",
+                        self._embed_canvas(fig, parent, hover_fmt=hover))
                 canvas = getattr(self, f"_{tag}_canvas")
         else:
             fig = getattr(self, f"_{tag}_fig")
@@ -1725,7 +1777,8 @@ class DemoApp(tk.Tk):
         fig.tight_layout(pad=0.8)
 
         if canvas is None:
-            self._embed_canvas(fig, parent)
+            self._embed_canvas(fig, parent,
+                               hover_fmt=lambda x, y: f"{x:.1f} · {y:.2f}")
         else:
             try:
                 canvas.draw_idle()

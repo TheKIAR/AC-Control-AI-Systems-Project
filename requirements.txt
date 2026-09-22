@@ -11,3 +11,7 @@ pytest==9.1.1
 # gymnasium
 # torch
 # tensorflow
+
+# Optional: only for rendering assets/wallpapers/*.mp4 (installed, not required)
+# imageio
+# imageio-ffmpeg
