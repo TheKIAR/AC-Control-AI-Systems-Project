@@ -155,8 +155,8 @@ class BasicApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"AI Systems Project (Basic) v{APP_VERSION}")
-        self.geometry("1020x760")
-        self.minsize(760, 600)
+        self.geometry("1040x860")
+        self.minsize(900, 700)
         self.configure(bg="#ffffff")
 
         self.temp_var = tk.IntVar(value=22)
