@@ -42,7 +42,8 @@ except ImportError:
     from src.data_driven.pipeline import DataPipeline
 
 
-def compute(temperature=22, episodes=5, points=5, method="supervised"):
+def compute(temperature=22, episodes=5, points=5, method="supervised",
+            occupied=True, night=False, energy_saver=False):
     """Run all four modules once, return plain values (no GUI, no plots)."""
     fuzzy = FuzzySystem()
     fuzzy.set_temperature(temperature)
@@ -68,7 +69,8 @@ def compute(temperature=22, episodes=5, points=5, method="supervised"):
                         if isinstance(v, (int, float)) and not isinstance(v, bool))
     flat = flat or [0.0]
 
-    advisor = build_advisor(temperature, occupied=True)
+    advisor = build_advisor(temperature, occupied=occupied, night=night,
+                              energy_saver=energy_saver)
 
     return {
         "temperature": temperature,
@@ -86,13 +88,19 @@ def compute(temperature=22, episodes=5, points=5, method="supervised"):
         "mean": sum(flat) / len(flat),
         "band": advisor.get("band", "?"),
         "conclusions": advisor.get("conclusions", []),
+        "occupied": occupied,
+        "night": night,
+        "energy_saver": energy_saver,
     }
 
 
 def format_result(result):
     lines = [
         f"Temperature : {result['temperature']} C  ->  {result['fuzzy_result']}",
-        f"Room band   : {result['band']}",
+        f"Room band   : {result['band']}  "
+        f"(occupied={result.get('occupied', True)}, "
+        f"night={result.get('night', False)}, "
+        f"saver={result.get('energy_saver', False)})",
         f"Policy      : {', '.join(result['conclusions']) or 'no actions'}",
         "",
         f"RL episodes : {result['episodes']}  |  best {result['best']:.2f}  |  "
@@ -120,6 +128,9 @@ class BasicApp(tk.Tk):
         self.rl_var = tk.IntVar(value=5)
         self.data_var = tk.IntVar(value=5)
         self.method_var = tk.StringVar(value="supervised")
+        self.occupied_var = tk.BooleanVar(value=True)
+        self.night_var = tk.BooleanVar(value=False)
+        self.saver_var = tk.BooleanVar(value=False)
 
         panel = tk.Frame(self, bg="#ffffff")
         panel.pack(fill="x", padx=12, pady=12)
@@ -133,6 +144,20 @@ class BasicApp(tk.Tk):
         tk.Label(method_row, text="Data method:", bg="#ffffff", fg="#000000",
                  width=22, anchor="w").pack(side="left")
         tk.OptionMenu(method_row, self.method_var, "supervised", "unsupervised").pack(side="left")
+
+        advisor_row = tk.Frame(panel, bg="#ffffff")
+        advisor_row.pack(fill="x", pady=2)
+        tk.Label(advisor_row, text="Room (FOPL advisor):", bg="#ffffff", fg="#000000",
+                 width=22, anchor="w").pack(side="left")
+        for text, var in (("Occupied", self.occupied_var),
+                          ("Night", self.night_var),
+                          ("Energy saver", self.saver_var)):
+            tk.Checkbutton(advisor_row, text=text, variable=var,
+                           command=self.run_all,
+                           bg="#ffffff", fg="#000000",
+                           selectcolor="#dddddd",
+                           activebackground="#ffffff",
+                           activeforeground="#000000").pack(side="left", padx=(0, 12))
 
         buttons = tk.Frame(panel, bg="#ffffff")
         buttons.pack(fill="x", pady=(10, 0))
@@ -303,7 +328,10 @@ class BasicApp(tk.Tk):
     def run_all(self):
         try:
             result = compute(int(self.temp_var.get()), int(self.rl_var.get()),
-                             int(self.data_var.get()), self.method_var.get())
+                             int(self.data_var.get()), self.method_var.get(),
+                             occupied=bool(self.occupied_var.get()),
+                             night=bool(self.night_var.get()),
+                             energy_saver=bool(self.saver_var.get()))
         except Exception as exc:
             self._show(f"Error: {type(exc).__name__}: {exc}")
             return
@@ -329,6 +357,9 @@ class BasicApp(tk.Tk):
         self.rl_var.set(5)
         self.data_var.set(5)
         self.method_var.set("supervised")
+        self.occupied_var.set(True)
+        self.night_var.set(False)
+        self.saver_var.set(False)
         self.run_all()
 
 
