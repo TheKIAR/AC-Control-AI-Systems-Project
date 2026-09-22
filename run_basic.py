@@ -132,7 +132,7 @@ class BasicApp(tk.Tk):
         self.minsize(760, 600)
         self.configure(bg="#ffffff")
         try:
-            icon_path = Path(__file__).resolve().parent / "assets" / "app.ico"
+            icon_path = Path(__file__).resolve().parent / "assets" / "app_basic.ico"
             if icon_path.exists():
                 self.iconbitmap(str(icon_path))
         except Exception:
