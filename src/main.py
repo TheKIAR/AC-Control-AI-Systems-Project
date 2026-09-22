@@ -262,7 +262,6 @@ class DemoApp(tk.Tk):
         self.saver_var = tk.BooleanVar(value=False)
         self.data_stats_var = tk.StringVar(value="")
         self.rl_stats_var = tk.StringVar(value="")
-        self.timeline_var = tk.StringVar(value="")
         self.auto_mode_var = tk.BooleanVar(value=False)
         self._auto_job = None
         self.module_status_labels = {}
@@ -1787,54 +1786,6 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
-    def _refresh_decision_timeline(self):
-        try:
-            temperature = int(self.temp_var.get())
-        except Exception:
-            temperature = 22
-        try:
-            fuzzy = FuzzySystem().evaluate(temperature)
-        except Exception:
-            fuzzy = "Unavailable"
-        try:
-            advisor = build_advisor(
-                temperature,
-                occupied=bool(self.occupied_var.get()),
-                night=bool(self.night_var.get()),
-                energy_saver=bool(self.saver_var.get()),
-            )
-            conclusions = advisor.get("conclusions", [])
-            policy = " + ".join(conclusions) if conclusions else "NO POLICY ACTION"
-        except Exception:
-            policy = "POLICY UNAVAILABLE"
-
-        result = getattr(self, "_last_result", None) or {}
-        rewards = result.get("rl_rewards", []) or []
-        if rewards:
-            best = max(rewards)
-            avg = sum(rewards) / len(rewards)
-            rl_text = f"BEST {best:.2f} · AVG {avg:.2f}"
-        else:
-            rl_text = "NOT TRAINED"
-
-        try:
-            values = normalize_values(result.get("processed_data", []))
-            data_text = f"N={len(values)} · MEAN={sum(values)/len(values):.2f}"
-        except Exception:
-            data_text = "NO DATA"
-
-        if "Decrease Temperature" in fuzzy:
-            final = "COOLING"
-        elif "Increase Temperature" in fuzzy:
-            final = "HEATING"
-        else:
-            final = "HOLD"
-
-        self.timeline_var.set(
-            f"{temperature:g}°C  →  FUZZY: {fuzzy.upper()}  →  "
-            f"FOPL: {policy}  →  RL: {rl_text}  →  DATA: {data_text}  →  FINAL: {final}"
-        )
-
     def _refresh_rl_stats(self, rewards):
         values = [float(v) for v in (rewards or [])]
         if not values:
@@ -1913,7 +1864,6 @@ class DemoApp(tk.Tk):
             self._refresh_fopl()
         except Exception:
             pass
-        self._refresh_decision_timeline()
         self._update_module_statuses(True)
 
     def _update_fuzzy_only(self, animate=True):

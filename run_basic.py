@@ -289,10 +289,10 @@ class BasicApp(tk.Tk):
         temps = [16, 18, 20, 22, 24, 26, 28, 30]
         values = [levels[system.evaluate(t)] for t in temps]
         fig, ax = self._plain_figure("Fuzzy decisions")
-        bars = ax.bar(temps, values,
-                      color=["#000000" if t == result["temperature"] else "#999999"
-                             for t in temps],
-                      edgecolor="#ffffff", linewidth=0.6)
+        ax.bar(temps, values,
+               color=["#000000" if t == result["temperature"] else "#999999"
+                      for t in temps],
+               edgecolor="#ffffff", linewidth=0.6)
         ax.set_xlabel("Temperature (C)", fontsize=8, color="#000000")
         ax.set_ylabel("Decision", fontsize=8, color="#000000")
         ax.set_yticks([1, 2, 3])
@@ -301,15 +301,11 @@ class BasicApp(tk.Tk):
         headline = {"Increase Temperature": "▲ INCREASE",
                     "Maintain Temperature": "● MAINTAIN",
                     "Decrease Temperature": "▼ DECREASE"}[result["fuzzy_result"]]
-        # Pinned top-left above headroom the bars never reach (all tall
-        # Decrease bars stand on the right), so the verdict can never hide
-        # behind a bar the way a centered overlay did.
+        # Verdict headline sits in empty headroom so bars never cover it.
         ax.set_ylim(0, 3.7)
         ax.text(15.8, 3.32, headline, ha="left", va="center",
                 fontsize=12, fontweight="bold", color="#000000")
-        # Exact-temperature marker: bar highlighting only lands on even
-        # temperatures, so odd inputs (e.g. 23) showed nothing. This dashed
-        # line always marks precisely where the input is.
+        # Dashed line marks the exact input (bars only sit on even temps).
         ax.axvline(result["temperature"], color="#000000", linestyle="--",
                    linewidth=1.5)
         fig.tight_layout()
