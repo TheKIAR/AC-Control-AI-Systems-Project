@@ -1757,6 +1757,13 @@ class DemoApp(tk.Tk):
         self._auto_job = None
         if self.auto_mode_var.get():
             self.run_demo(auto=True)
+            # Keep the loop alive: RL retrains and data reprocesses every
+            # 5 seconds until Auto Mode is switched off. Single chain only —
+            # each run schedules exactly one follow-up.
+            try:
+                self._auto_job = self.after(5000, self._auto_run)
+            except Exception:
+                self._auto_job = None
 
     def _update_module_statuses(self, active=True):
         if not getattr(self, "module_status_labels", None):
