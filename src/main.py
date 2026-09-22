@@ -204,8 +204,8 @@ class DemoApp(tk.Tk):
         super().__init__()
         self.theme = "dark"
         self.title("AI Control System")
-        self.geometry("1240x1000")
-        self.minsize(980, 760)
+        self.geometry("1360x980")
+        self.minsize(1100, 750)
         self.configure(bg=self.BG)
         self.resizable(True, True)
 
@@ -1454,10 +1454,10 @@ class DemoApp(tk.Tk):
         if accent is not None:
             # A small rounded accent pill, rather than a sharp top stripe.
             pill = tk.Canvas(card, bg=self.CARD, height=7, highlightthickness=0, bd=0)
-            pill.pack(fill="x", padx=18, pady=(10, 0))
+            pill.pack(fill="x", padx=12, pady=(8, 0))
             _rounded_rect(pill, 0, 1, 72, 6, 3, accent)
         header = tk.Frame(card, bg=self.CARD, bd=0, highlightthickness=0)
-        header.pack(fill="x", padx=18, pady=(8, 6))
+        header.pack(fill="x", padx=12, pady=(6, 4))
         tk.Label(
             header, text=title, bg=self.CARD, fg=self.TEXT,
             font=("Segoe UI", 10, "bold")
@@ -1470,7 +1470,7 @@ class DemoApp(tk.Tk):
 
     def _chart_host(self, parent):
         host = tk.Frame(parent, bg=self.CARD)
-        host.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        host.pack(fill="both", expand=True, padx=6, pady=(0, 8))
         return host
 
     def _embed_canvas(self, fig, host):
@@ -1485,7 +1485,7 @@ class DemoApp(tk.Tk):
         widget.pack(fill="both", expand=True)
         return canvas
 
-    def _make_figure(self, width=5, height=4.2):
+    def _make_figure(self, width=5, height=3.4):
         fig = Figure(figsize=(width, height), dpi=100, facecolor=self.CARD)
         ax = fig.add_subplot(111)
         ax.set_facecolor(self.CARD)
@@ -1535,7 +1535,7 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
-        fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 4.2)
+        fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 3.4)
 
         import numpy as np # type: ignore
 
@@ -1638,7 +1638,7 @@ class DemoApp(tk.Tk):
                     child.destroy()
                 except Exception:
                     pass
-            fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 4.2)
+            fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 3.4)
             if tag:
                 setattr(self, f"_{tag}_fig", fig)
                 setattr(self, f"_{tag}_ax", ax)
@@ -1675,10 +1675,14 @@ class DemoApp(tk.Tk):
                 x_values[-1], average, f" avg {average:.2f}",
                 color=self.MUTED, fontsize=7, ha="right", va="bottom"
             )
-        ax.set_title(title, color=self.TEXT, fontsize=10, loc="left", pad=10)
+        ax.set_title(title, color=self.TEXT, fontsize=9, loc="left", pad=6)
         ax.set_xlabel(x_label, color=self.MUTED, fontsize=8)
         ax.set_ylabel(y_label, color=self.MUTED, fontsize=8)
         ax.tick_params(colors=self.MUTED, labelsize=8)
+        try:
+            ax.locator_params(axis="x", nbins=6)
+        except Exception:
+            pass
         ax.grid(True, color=self.BORDER, alpha=0.65, linestyle="--", linewidth=0.6)
         for spine in ax.spines.values():
             spine.set_color(self.BORDER)
@@ -1690,7 +1694,7 @@ class DemoApp(tk.Tk):
                 text_item.set_color(self.MUTED)
         except Exception:
             pass
-        fig.tight_layout(pad=1.2)
+        fig.tight_layout(pad=0.8)
 
         if canvas is None:
             self._embed_canvas(fig, parent)
