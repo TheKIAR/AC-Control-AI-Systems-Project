@@ -201,11 +201,12 @@ class BasicApp(tk.Tk):
         ax.set_yticks([1, 2, 3])
         ax.set_yticklabels(["Increase", "Maintain", "Decrease"], fontsize=7)
         ax.grid(axis="y", linestyle=":", alpha=0.5, color="#888888")
-        current = levels[result["fuzzy_result"]]
-        ax.annotate(result["fuzzy_result"].replace(" Temperature", ""),
-                    xy=(result["temperature"], current),
-                    xytext=(0, 12), textcoords="offset points",
-                    ha="center", fontsize=8, fontweight="bold", color="#000000")
+        headline = {"Increase Temperature": "▲ INCREASE",
+                    "Maintain Temperature": "● MAINTAIN",
+                    "Decrease Temperature": "▼ DECREASE"}[result["fuzzy_result"]]
+        ax.text(0.5, 0.94, headline, transform=ax.transAxes,
+                ha="center", va="top", fontsize=13, fontweight="bold",
+                color="#000000")
         fig.tight_layout()
         self._show_figure(self.fuzzy_host, fig)
 
