@@ -1179,23 +1179,48 @@ class DemoApp(tk.Tk):
                 w*.67,h*.75,w*.84,h*.61,w,h*.74,w,h,0,h,
                 fill=mix(p["ground"],bottom,.10),outline=""
             )
-            # Bare branch silhouette.
+            # Autumn tree: keep the canopy attached to the upper branches
+            # so the scene reads as a real tree, while a few leaves drift down.
             trunk_x=w*.84
-            c.create_line(trunk_x,h*.84,trunk_x-10,h*.47,
-                          fill="#392b26",width=6)
-            for dx,dy in ((-42,-72),(-70,-48),(-24,-102),(25,-78),(48,-44)):
-                c.create_line(trunk_x-10,h*.48,trunk_x+dx,h*.48+dy,
+            trunk_base=(trunk_x,h*.86)
+            trunk_top=(trunk_x-10,h*.47)
+            c.create_line(*trunk_base,*trunk_top,fill="#392b26",width=6)
+            branches=((-42,-72),(-70,-48),(-24,-102),(25,-78),(48,-44))
+            for dx,dy in branches:
+                c.create_line(trunk_top[0],trunk_top[1],
+                              trunk_top[0]+dx,trunk_top[1]+dy,
                               fill="#392b26",width=3)
+
+            # Dense autumn canopy placed directly over the branch tips.
+            canopy_centers=[]
+            for dx,dy in branches:
+                canopy_centers.append((trunk_top[0]+dx,trunk_top[1]+dy))
+            canopy_centers.extend((
+                (trunk_x-62,h*.37),(trunk_x-34,h*.28),
+                (trunk_x-2,h*.33),(trunk_x+28,h*.38),
+                (trunk_x-45,h*.46),
+            ))
+            for i,(cx,cy) in enumerate(canopy_centers):
+                rr=10+(i%3)*3
+                fill=p["soft"] if i%3==0 else (p["accent"] if i%3==1 else "#f0b44d")
+                c.create_oval(cx-rr,cy-rr*.72,cx+rr,cy+rr*.72,
+                              fill=fill,outline="")
+                # small darker leaf clusters add depth
+                c.create_oval(cx-rr*.45,cy-rr*.85,cx+rr*.55,cy-rr*.12,
+                              fill=p["soft"],outline="")
+
             # Warm atmospheric glow instead of a visible sun.
             c.create_oval(w*.68,h*.12,w*.86,h*.38,
                           fill=mix(p["light"],top,.35),outline="")
+
+            # Falling leaves use only keys that _spawn_weather actually creates.
             for part in self._weather_parts:
                 x=((part["bx"]+part["sway"]*math.sin(phase*.035+part["ph"]))%1)*w
                 y=((part["by"]+phase*part["spd"])%1)*h
                 s=part["size"]
                 rot=part["rot"]+phase*.05
                 dx,dy=math.cos(rot)*s,math.sin(rot)*s
-                col=p["accent"] if part["shade"]%2 else p["soft"]
+                col=p["accent"] if int(part["bx"]*10)%2 else p["soft"]
                 c.create_polygon(
                     x,y-s,x+dx+s*.65,y+dy*.12,x,y+s,
                     x-dx-s*.65,y-dy*.12,fill=col,outline=""
