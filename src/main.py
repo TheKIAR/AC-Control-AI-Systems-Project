@@ -255,6 +255,21 @@ class DemoApp(tk.Tk):
         self._hide_splash()
         tk.Misc.lower(self._frame_canvas)
         self._start_frame_animation()
+        self._fade_in_launch()
+
+    def _fade_in_launch(self, alpha=0.55):
+        # Gentle materialize on launch instead of popping into view.
+        try:
+            if not self.winfo_exists():
+                return
+            self.attributes("-alpha", alpha)
+        except Exception:
+            return
+        if alpha < 1.0:
+            try:
+                self.after(14, lambda: self._fade_in_launch(min(1.0, alpha + 0.15)))
+            except Exception:
+                pass
 
     def _show_splash(self):
         # Brief loading cover while the first full refresh (RL training +
@@ -275,8 +290,9 @@ class DemoApp(tk.Tk):
                 splash.geometry(f"{w}x{h}+{x}+{y}")
             except Exception:
                 splash.geometry(f"{w}x{h}")
-            tk.Label(splash, text="AI CONTROL", bg=self.BG, fg=self.TEXT,
+            tk.Label(splash, text="AI CONTROL", bg=self.BG, fg=self.ACCENT,
                      font=("Segoe UI", 18, "bold")).pack(pady=(26, 2))
+            tk.Frame(splash, bg=self.ACCENT, height=2, width=120).pack(pady=(0, 8))
             tk.Label(splash, text="warming up the modules…", bg=self.BG, fg=self.MUTED,
                      font=("Segoe UI", 9)).pack(pady=(0, 14))
             bar = ttk.Progressbar(splash, mode="indeterminate", length=260)
@@ -737,14 +753,18 @@ class DemoApp(tk.Tk):
         )):
             cell = tk.Frame(led_row, bg=self.CARD)
             cell.grid(row=0, column=col, sticky="nsew")
-            dot = tk.Canvas(cell, bg=self.CARD, width=22, height=22,
+            dot = tk.Canvas(cell, bg=self.CARD, width=26, height=26,
                             highlightthickness=0, bd=0)
             dot.pack()
-            item = dot.create_oval(4, 4, 18, 18, fill=self.BG,
+            halo = dot.create_oval(1, 1, 25, 25, fill="", outline="")
+            core = dot.create_oval(6, 6, 20, 20, fill=self.BG,
                                    outline=self.BORDER, width=2)
-            tk.Label(cell, text=short, bg=self.CARD, fg=self.MUTED,
-                     font=("Consolas", 7, "bold")).pack()
-            self._fopl_leds[predicate] = (dot, item, color)
+            spec = dot.create_oval(9, 9, 13, 13, fill="white", outline="",
+                                   state="hidden")
+            name_label = tk.Label(cell, text=short, bg=self.CARD, fg=self.MUTED,
+                                  font=("Consolas", 7, "bold"))
+            name_label.pack()
+            self._fopl_leds[predicate] = (dot, halo, core, spec, name_label, color)
 
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 10))
@@ -1588,12 +1608,20 @@ class DemoApp(tk.Tk):
         active = set()
         for conclusion in advisor.get("conclusions", []):
             active.add(conclusion.split("(")[0])
-        for predicate, (canvas, item, color) in getattr(self, "_fopl_leds", {}).items():
+        for predicate, parts in getattr(self, "_fopl_leds", {}).items():
             try:
+                canvas, halo, core, spec, name_label, color = parts
                 if predicate in active:
-                    canvas.itemconfig(item, fill=color, outline=color)
+                    canvas.itemconfig(halo, fill=self._blend(color, self.CARD, 0.55),
+                                      outline="")
+                    canvas.itemconfig(core, fill=color, outline=color)
+                    canvas.itemconfig(spec, state="normal")
+                    name_label.configure(fg=color)
                 else:
-                    canvas.itemconfig(item, fill=self.BG, outline=self.BORDER)
+                    canvas.itemconfig(halo, fill="", outline="")
+                    canvas.itemconfig(core, fill=self.BG, outline=self.BORDER)
+                    canvas.itemconfig(spec, state="hidden")
+                    name_label.configure(fg=self.MUTED)
             except Exception:
                 pass
 
