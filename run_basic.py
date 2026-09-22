@@ -158,6 +158,38 @@ class BasicApp(tk.Tk):
         self.data_host = tk.Frame(charts, bg="#ffffff")
         self.data_host.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
 
+        led_frame = tk.Frame(self, bg="#ffffff", relief="solid", borderwidth=1)
+        led_frame.pack(fill="x", padx=12, pady=(0, 12))
+        tk.Label(led_frame, text="FOPL POLICY", bg="#ffffff", fg="#555555",
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=8, pady=(6, 2))
+        led_row = tk.Frame(led_frame, bg="#ffffff")
+        led_row.pack(fill="x", padx=8, pady=(0, 8))
+        led_row.grid_columnconfigure(tuple(range(11)), weight=1, uniform="leds")
+        self._leds = {}
+        for col, (predicate, short, color) in enumerate((
+            ("AC_HIGH", "HIGH", "#0099cc"),
+            ("AC_ECO", "ECO", "#007700"),
+            ("AC_OFF", "A-OFF", "#555555"),
+            ("AC_STANDBY", "STBY", "#0000cc"),
+            ("HEATER_ON", "HEAT", "#cc5500"),
+            ("HEATER_OFF", "H-OFF", "#555555"),
+            ("LIGHTS_OFF", "L-OFF", "#555555"),
+            ("DIM_LIGHTS", "DIM", "#997700"),
+            ("BLINDS_DOWN", "BLIND", "#6600cc"),
+            ("WINDOWS_OPEN", "WIN", "#007700"),
+            ("ALERT_OVERHEAT", "ALERT", "#cc0000"),
+        )):
+            cell = tk.Frame(led_row, bg="#ffffff")
+            cell.grid(row=0, column=col, sticky="nsew")
+            dot = tk.Canvas(cell, bg="#ffffff", width=22, height=22,
+                            highlightthickness=0, bd=0)
+            dot.pack()
+            item = dot.create_oval(4, 4, 18, 18, fill="#ffffff",
+                                   outline="#888888", width=2)
+            tk.Label(cell, text=short, bg="#ffffff", fg="#555555",
+                     font=("Consolas", 7, "bold")).pack()
+            self._leds[predicate] = (dot, item, color)
+
         self.run_all()
 
     def _plain_figure(self, title):
@@ -210,6 +242,11 @@ class BasicApp(tk.Tk):
         ax.set_ylim(0, 3.7)
         ax.text(15.8, 3.32, headline, ha="left", va="center",
                 fontsize=12, fontweight="bold", color="#000000")
+        # Exact-temperature marker: bar highlighting only lands on even
+        # temperatures, so odd inputs (e.g. 23) showed nothing. This dashed
+        # line always marks precisely where the input is.
+        ax.axvline(result["temperature"], color="#000000", linestyle="--",
+                   linewidth=1.5)
         fig.tight_layout()
         self._show_figure(self.fuzzy_host, fig)
 
@@ -275,6 +312,17 @@ class BasicApp(tk.Tk):
             self._draw_charts(result)
         except Exception as exc:
             self._show(format_result(result) + f"\n\nCharts unavailable: {exc}")
+        try:
+            active = set()
+            for conclusion in result["conclusions"]:
+                active.add(conclusion.split("(")[0])
+            for predicate, (canvas, item, color) in self._leds.items():
+                if predicate in active:
+                    canvas.itemconfig(item, fill=color, outline=color)
+                else:
+                    canvas.itemconfig(item, fill="#ffffff", outline="#888888")
+        except Exception:
+            pass
 
     def reset_all(self):
         self.temp_var.set(22)
