@@ -236,7 +236,7 @@ class DemoApp(tk.Tk):
         self._pulse_level = 0
         self._scroll_job = None
         self._refit_job = None
-        self._fig_width = 10.0
+        self._fig_width = 5.0
         self._fitted_width = 0
         self._last_result = None
         self._fade_gen = 0
@@ -785,19 +785,18 @@ class DemoApp(tk.Tk):
 
         self.output_grid = tk.Frame(body, bg=self.BG)
         self.output_grid.pack(fill="both", expand=True)
-        self.output_grid.grid_columnconfigure(0, weight=1)
-        self.output_grid.grid_rowconfigure(0, weight=3)
-        self.output_grid.grid_rowconfigure(1, weight=1)
-        self.output_grid.grid_rowconfigure(2, weight=1)
+        for column in range(3):
+            self.output_grid.grid_columnconfigure(column, weight=1, uniform="charts")
+        self.output_grid.grid_rowconfigure(0, weight=1)
 
         self.fuzzy_card = self._create_output_card(
             0, 0, "Fuzzy Temperature", "Live", self.BLUE
         )
         self.rl_card = self._create_output_card(
-            1, 0, "Reinforcement Learning", "Reward", self.ACCENT_2
+            0, 1, "Reinforcement Learning", "Reward", self.ACCENT_2
         )
         self.data_card = self._create_output_card(
-            2, 0, "Data Processing", "Processed Data", self.GREEN
+            0, 2, "Data Processing", "Processed Data", self.GREEN
         )
 
         self.fuzzy_chart = self._chart_host(self.fuzzy_card)
@@ -1450,7 +1449,8 @@ class DemoApp(tk.Tk):
 
     def _create_output_card(self, row, column, title, subtitle, accent=None):
         shell, card = self._rounded_panel(self.output_grid, bg=self.BG, radius=20)
-        shell.grid(row=row, column=column, sticky="nsew", pady=(0, 12))
+        shell.grid(row=row, column=column, sticky="nsew",
+                   padx=(0, 10) if column < 2 else (0, 0), pady=(0, 12))
         if accent is not None:
             # A small rounded accent pill, rather than a sharp top stripe.
             pill = tk.Canvas(card, bg=self.CARD, height=7, highlightthickness=0, bd=0)
@@ -1485,7 +1485,7 @@ class DemoApp(tk.Tk):
         widget.pack(fill="both", expand=True)
         return canvas
 
-    def _make_figure(self, width=10, height=4.2):
+    def _make_figure(self, width=5, height=4.2):
         fig = Figure(figsize=(width, height), dpi=100, facecolor=self.CARD)
         ax = fig.add_subplot(111)
         ax.set_facecolor(self.CARD)
@@ -1535,7 +1535,7 @@ class DemoApp(tk.Tk):
             except Exception:
                 pass
 
-        fig, ax = self._make_figure(getattr(self, "_fig_width", 10.0), 4.2)
+        fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 4.2)
 
         import numpy as np # type: ignore
 
@@ -1606,7 +1606,7 @@ class DemoApp(tk.Tk):
             if abs(width_px - getattr(self, "_fitted_width", 0)) < 60:
                 return
             self._fitted_width = width_px
-            self._fig_width = min(16.0, max(6.0, width_px / 100.0))
+            self._fig_width = min(8.0, max(3.5, width_px / 100.0))
             # Drop the cached figures; the draw paths rebuild them at the
             # new width with the same data (no retraining, no flicker since
             # widgets are replaced under cover of draw_idle).
@@ -1619,7 +1619,8 @@ class DemoApp(tk.Tk):
             pass
 
     def _draw_line_chart(self, parent, x_values, y_values, title, x_label, y_label, accent,
-                         mark_best=False, mark_average=False):
+                         mark_best=False, mark_average=False,
+                         series_label="value", average_label="average"):
         # Persistent figure per chart: replot into the same axes instead of
         # destroying the widget, so refreshes never flash or jump.
         if parent is self.rl_chart:
@@ -1637,7 +1638,7 @@ class DemoApp(tk.Tk):
                     child.destroy()
                 except Exception:
                     pass
-            fig, ax = self._make_figure(getattr(self, "_fig_width", 10.0), 4.2)
+            fig, ax = self._make_figure(getattr(self, "_fig_width", 5.0), 4.2)
             if tag:
                 setattr(self, f"_{tag}_fig", fig)
                 setattr(self, f"_{tag}_ax", ax)
@@ -1653,21 +1654,22 @@ class DemoApp(tk.Tk):
             ax.set_facecolor(self.CARD)
         ax.plot(
             x_values, y_values, color=accent, linewidth=2.2,
-            marker="o", markersize=4
+            marker="o", markersize=4, label=series_label
         )
         ax.fill_between(x_values, y_values, 0, color=accent, alpha=0.08)
         if mark_best and len(y_values) >= 1:
             # White ring + accent dot on the peak episode.
             best_i = max(range(len(y_values)), key=lambda i: y_values[i])
             ax.scatter([x_values[best_i]], [y_values[best_i]],
-                       color="#ffffff", s=80, zorder=5)
+                       color="#ffffff", s=80, zorder=5,
+                       label=f"best {y_values[best_i]:.2f}")
             ax.scatter([x_values[best_i]], [y_values[best_i]],
                        color=accent, s=38, zorder=6)
         if mark_average and len(y_values) >= 1:
             average = sum(y_values) / len(y_values)
             ax.axhline(
                 average, color=self.MUTED, linewidth=1.2,
-                linestyle=":", alpha=0.9
+                linestyle=":", alpha=0.9, label=f"{average_label} {average:.2f}"
             )
             ax.text(
                 x_values[-1], average, f" avg {average:.2f}",
@@ -1680,6 +1682,14 @@ class DemoApp(tk.Tk):
         ax.grid(True, color=self.BORDER, alpha=0.65, linestyle="--", linewidth=0.6)
         for spine in ax.spines.values():
             spine.set_color(self.BORDER)
+        try:
+            leg = ax.legend(fontsize=7, loc="best", framealpha=0.9)
+            leg.get_frame().set_facecolor(self.CARD)
+            leg.get_frame().set_edgecolor(self.BORDER)
+            for text_item in leg.get_texts():
+                text_item.set_color(self.MUTED)
+        except Exception:
+            pass
         fig.tight_layout(pad=1.2)
 
         if canvas is None:
@@ -1830,13 +1840,14 @@ class DemoApp(tk.Tk):
         self._draw_line_chart(
             self.rl_chart, list(range(1, len(rewards) + 1)), rewards,
             "Reward by episode", "Episode", "Reward", self.ACCENT_2,
-            mark_best=True, mark_average=True
+            mark_best=True, mark_average=True, series_label="reward"
         )
 
         y_values = normalize_values(result.get("processed_data", []))
         self._draw_line_chart(
             self.data_chart, list(range(1, len(y_values) + 1)), y_values,
-            "Processed data stream", "Sample", "Value", self.GREEN
+            "Processed data stream", "Sample", "Value", self.GREEN,
+            mark_average=True, series_label="value", average_label="mean"
         )
         try:
             lo, hi = min(y_values), max(y_values)
