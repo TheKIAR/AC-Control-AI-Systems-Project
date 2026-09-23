@@ -1,0 +1,49 @@
+name: Runtime Demo Capture
+
+on:
+  push:
+    paths-ignore:
+      - "assets/runtime-screenshot.png"
+      - "assets/demo.gif"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install GUI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk xvfb imagemagick
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Capture actual GUI runtime
+        run: |
+          mkdir -p assets/capture-frames
+          xvfb-run -a -s "-screen 0 1440x1000x24" bash -lc '
+            python run_gui.py >/tmp/ai-gui.log 2>&1 &
+            pid=$!
+            sleep 8
+            for i in $(seq -w 0 17); do
+              import -window root "assets/capture-frames/frame-$i.png"
+              sleep 0.25
+            done
+            cp assets/capture-frames/frame-17.png assets/runtime-screenshot.png
+            kill "$pid" || true
+          '
+          convert -delay 9 -loop 0 assets/capture-frames/frame-*.png assets/demo.gif
+          rm -rf assets/capture-frames
+      - name: Commit runtime media
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/runtime-screenshot.png assets/demo.gif
+          git diff --cached --quiet || git commit -m "Add actual AI GUI runtime screenshot and GIF demo"
+          git push
