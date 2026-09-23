@@ -701,6 +701,12 @@ class DemoApp(tk.Tk):
             width=118, height=38, radius=16
         )
         self.theme_button.pack(side="right", padx=(0, 4))
+        self._power_button = RoundedButton(
+            header, text="POWER ON", command=self._toggle_power,
+            bg="#22c55e", fg="#06281c", hover="#16a34a",
+            width=118, height=38, radius=16
+        )
+        self._power_button.pack(side="right", padx=(0, 10))
 
         # Live sky strip back on top: it costs some scroll room, but it is
         # the first thing seen and sets the weather mood immediately.
@@ -758,17 +764,11 @@ class DemoApp(tk.Tk):
 
         action_row = tk.Frame(controls, bg=self.PANEL)
         action_row.pack(fill="x", padx=18, pady=(0, 10))
-        self._power_button = RoundedButton(
-            action_row, text="POWER ON", command=self._toggle_power,
-            bg="#22c55e", fg="#06281c", hover="#16a34a",
-            width=118, height=34, radius=16
-        )
-        self._power_button.pack(side="left")
         RoundedButton(
             action_row, text="Run System", command=self.run_demo,
             bg=self.ACCENT, fg="#ffffff", hover="#6a9fff",
             width=128, height=34, radius=16
-        ).pack(side="left", padx=(10, 0))
+        ).pack(side="left")
         RoundedButton(
             action_row, text="Reset", command=self.reset_controls,
             bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
@@ -1897,7 +1897,7 @@ class DemoApp(tk.Tk):
                     self._power_button.set_colors("#22c55e", "#06281c", "#16a34a")
                     self._power_button.set_text("POWER ON")
                 else:
-                    self._power_button.set_colors("#3a414c", "#8290a8", "#3a414c")
+                    self._power_button.set_colors("#c0392b", "#ffffff", "#a93226")
                     self._power_button.set_text("POWER OFF")
             except Exception:
                 pass

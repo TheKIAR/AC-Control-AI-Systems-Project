@@ -168,6 +168,18 @@ class BasicApp(tk.Tk):
         self.saver_var = tk.BooleanVar(value=False)
         self.power_var = tk.BooleanVar(value=True)
 
+        header = tk.Frame(self, bg="#ffffff", relief="solid", borderwidth=1)
+        header.pack(fill="x", padx=12, pady=(12, 0))
+        tk.Label(header, text="AI Systems Project — Basic",
+                 bg="#ffffff", fg="#000000",
+                 font=("Segoe UI", 14, "bold")).pack(side="left", padx=10, pady=8)
+        self.power_button = tk.Button(header, text="Power: ON", width=12,
+                                      bg="#22c55e", fg="#06281c",
+                                      activebackground="#16a34a",
+                                      command=self._toggle_power)
+        self.power_button.pack(side="right", padx=10, pady=8)
+        self._bind_keyboard()
+
         panel = tk.Frame(self, bg="#ffffff")
         panel.pack(fill="x", padx=12, pady=12)
 
@@ -197,13 +209,13 @@ class BasicApp(tk.Tk):
 
         buttons = tk.Frame(panel, bg="#ffffff")
         buttons.pack(fill="x", pady=(10, 0))
-        self.power_button = tk.Button(buttons, text="Power: ON", width=12,
-                                      command=self._toggle_power)
-        self.power_button.pack(side="left")
         tk.Button(buttons, text="Run", width=12,
-                  command=self.run_all).pack(side="left", padx=(8, 0))
+                  command=self.run_all).pack(side="left")
         tk.Button(buttons, text="Reset", width=12,
                   command=self.reset_all).pack(side="left", padx=(8, 0))
+        tk.Label(buttons, text="Keys: Up/Down temp - R run - Esc reset",
+                 bg="#ffffff", fg="#555555",
+                 font=("Consolas", 8)).pack(side="right")
 
         self.output = tk.Text(self, height=10, wrap="word", bg="#ffffff",
                               fg="#000000", relief="solid", borderwidth=1)
@@ -348,6 +360,28 @@ class BasicApp(tk.Tk):
         fig.tight_layout()
         self._show_figure(self.data_host, fig)
 
+    def _bind_keyboard(self):
+        self.bind("<Up>", lambda e: self._keyboard_temp(1))
+        self.bind("<Down>", lambda e: self._keyboard_temp(-1))
+        self.bind("<Left>", lambda e: self._keyboard_episodes(-1))
+        self.bind("<Right>", lambda e: self._keyboard_episodes(1))
+        self.bind("<r>", lambda e: self.run_all())
+        self.bind("<R>", lambda e: self.run_all())
+        self.bind("<space>", lambda e: self.run_all())
+        self.bind("<Escape>", lambda e: self.reset_all())
+
+    def _keyboard_temp(self, amount):
+        if not self.power_var.get():
+            return
+        self.temp_var.set(max(10, min(35, int(self.temp_var.get()) + amount)))
+        self.run_all()
+
+    def _keyboard_episodes(self, amount):
+        if not self.power_var.get():
+            return
+        self.rl_var.set(max(1, min(20, int(self.rl_var.get()) + amount)))
+        self.run_all()
+
     def _row(self, parent, label, variable, minimum, maximum):
         row = tk.Frame(parent, bg="#ffffff")
         row.pack(fill="x", pady=2)
@@ -415,7 +449,9 @@ class BasicApp(tk.Tk):
         try:
             self.power_button.configure(
                 text="Power: ON" if on else "Power: OFF",
-                bg="#ffffff" if on else "#dddddd")
+                bg="#22c55e" if on else "#c0392b",
+                fg="#06281c" if on else "#ffffff",
+                activebackground="#16a34a" if on else "#a93226")
         except Exception:
             pass
 
