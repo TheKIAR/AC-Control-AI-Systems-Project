@@ -1,6 +1,8 @@
 # AI Systems Project
 
-![GUI Preview](assets/gui_main.png)
+![Runtime Screenshot](assets/runtime-screenshot.png)
+
+![Runtime Demo](assets/demo.gif)
 ![Tests](https://github.com/TheKIAR/AC-Control-AI-Systems-Project/actions/workflows/tests.yml/badge.svg)
 
 
