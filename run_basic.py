@@ -59,7 +59,7 @@ try:
     from reinforcement_learning.trainer import RLTrainer
     from data_driven.generator import DataGenerator
     from data_driven.pipeline import DataPipeline
-    from version import __version__ as APP_VERSION
+    from version import BASIC_VERSION as APP_VERSION
 except ImportError:
     from src.fuzzy_logic.fuzzy_system import FuzzySystem
     from src.fopl.advisor import build_advisor
@@ -69,10 +69,10 @@ except ImportError:
     from src.data_driven.generator import DataGenerator
     from src.data_driven.pipeline import DataPipeline
     try:
-        from version import __version__ as APP_VERSION
+        from version import BASIC_VERSION as APP_VERSION
     except ImportError:
         try:
-            from src.version import __version__ as APP_VERSION
+            from src.version import BASIC_VERSION as APP_VERSION
         except ImportError:
             APP_VERSION = "1.0.0"
 

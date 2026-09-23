@@ -11,7 +11,7 @@ REQUIREMENTS = [
 
 setup(
     name='ai-systems-project',
-    version='1.0.0',
+    version='2.0.0',
     author='Md. Ragib Ashhab',
     author_email='ragibashhab2733@gmail.com',
     description='A project implementing fuzzy logic, reinforcement learning, and data-driven AI systems.',
