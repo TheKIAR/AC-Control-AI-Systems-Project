@@ -69,9 +69,9 @@ AI-Systems-Project/
 ├── run_gui.py
 ├── run_gui.bat
 ├── run_gui.ps1
-├── run_basic.py
-├── run_basic.bat
-├── run_basic.ps1
+├── run_classic.py
+├── run_classic.bat
+├── run_classic.ps1
 ├── setup.py
 └── README.md
 ```
@@ -108,14 +108,14 @@ themes, one-row chart outputs with value legends, Cold/Normal/Hot presets that
 reconfigure temperature plus RL episodes plus data points, a Logic Advisor
 section with room tick-boxes, an 11-LED FOPL policy row with switches, a live
 weather sky, and an Export button that zips charts plus summary plus logic
-trace. The basic GUI (`python run_basic.py`) is a plain white window with the
+trace. The classic GUI (`python run_classic.py`) is a plain white window with the
 same engine: sliders, three charts with best/average/mean guides, a text
 readout, advisor tick-boxes, and the LED row — no animations.
 
 ![Full GUI](assets/gui_main.png)
-![Basic GUI](assets/gui_basic.png)
+![Classic GUI](assets/gui_classic.png)
 
-The main app is at v2.0 and the basic app at v1.0 (shown in their window
+The main app is at v2.0 and the classic app at v1.0 (shown in their window
 title bars, mirrored in `setup.py` and `src/version.py`). For the viva walkthrough see [docs/VIVA_DEMO.md](docs/VIVA_DEMO.md).
 
 The GUI lets you adjust temperature, RL episode count, data-point count, and the data-generation method. The Export button saves charts, a text summary, and the logic trace into the local `outputs/` directory.
@@ -166,9 +166,9 @@ Integrated Result
 Two launchers ship in `dist/` (built locally, never committed):
 
 - `AISystemsProject.exe` — the full GUI (themes, animations, LEDs, export).
-- `AISystemsProjectBasic.exe` — the plain white GUI (same engine, no animations).
+- `AISystemsProjectClassic.exe` — the plain white GUI (same engine, no animations).
 
-The repository includes an application icon and Windows launcher scripts (`run_gui.bat/.ps1`, `run_basic.bat/.ps1`). If you want to redistribute, rebuild locally with PyInstaller rather than committing the generated `build/` or `dist/` directories.
+The repository includes an application icon and Windows launcher scripts (`run_gui.bat/.ps1`, `run_classic.bat/.ps1`). If you want to redistribute, rebuild locally with PyInstaller rather than committing the generated `build/` or `dist/` directories.
 
 ## Notes
 
