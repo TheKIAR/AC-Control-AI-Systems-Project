@@ -1,5 +1,6 @@
 # AI Systems Project
 
+![GUI Preview](assets/gui_main.png)
 ![Tests](https://github.com/TheKIAR/AC-Control-AI-Systems-Project/actions/workflows/tests.yml/badge.svg)
 
 
