@@ -166,6 +166,7 @@ class BasicApp(tk.Tk):
         self.occupied_var = tk.BooleanVar(value=True)
         self.night_var = tk.BooleanVar(value=False)
         self.saver_var = tk.BooleanVar(value=False)
+        self.power_var = tk.BooleanVar(value=True)
 
         panel = tk.Frame(self, bg="#ffffff")
         panel.pack(fill="x", padx=12, pady=12)
@@ -196,8 +197,11 @@ class BasicApp(tk.Tk):
 
         buttons = tk.Frame(panel, bg="#ffffff")
         buttons.pack(fill="x", pady=(10, 0))
+        self.power_button = tk.Button(buttons, text="Power: ON", width=12,
+                                      command=self._toggle_power)
+        self.power_button.pack(side="left")
         tk.Button(buttons, text="Run", width=12,
-                  command=self.run_all).pack(side="left")
+                  command=self.run_all).pack(side="left", padx=(8, 0))
         tk.Button(buttons, text="Reset", width=12,
                   command=self.reset_all).pack(side="left", padx=(8, 0))
 
@@ -362,6 +366,8 @@ class BasicApp(tk.Tk):
         self.output.configure(state="disabled")
 
     def run_all(self):
+        if not self.power_var.get():
+            return
         try:
             result = compute(int(self.temp_var.get()), int(self.rl_var.get()),
                              int(self.data_var.get()), self.method_var.get(),
@@ -389,6 +395,8 @@ class BasicApp(tk.Tk):
             pass
 
     def reset_all(self):
+        if not self.power_var.get():
+            return
         self.temp_var.set(22)
         self.rl_var.set(5)
         self.data_var.set(5)
@@ -397,6 +405,43 @@ class BasicApp(tk.Tk):
         self.night_var.set(False)
         self.saver_var.set(False)
         self.run_all()
+
+    def _toggle_power(self):
+        self._set_power(not self.power_var.get())
+
+    def _set_power(self, on):
+        on = bool(on)
+        self.power_var.set(on)
+        try:
+            self.power_button.configure(
+                text="Power: ON" if on else "Power: OFF",
+                bg="#ffffff" if on else "#dddddd")
+        except Exception:
+            pass
+
+        def walk(widget):
+            for child in widget.winfo_children():
+                if child is self.power_button or child is getattr(self, "output", None):
+                    continue
+                try:
+                    child.configure(state="normal" if on else "disabled")
+                except Exception:
+                    pass
+                walk(child)
+
+        try:
+            walk(self)
+        except Exception:
+            pass
+        if on:
+            self.run_all()
+        else:
+            try:
+                for _canvas, _item, _color in self._leds.values():
+                    _canvas.itemconfig(_item, fill="#ffffff", outline="#888888")
+            except Exception:
+                pass
+            self._show("STANDBY  //  POWER OFF")
 
 
 def main():

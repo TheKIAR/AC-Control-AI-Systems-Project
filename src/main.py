@@ -161,22 +161,52 @@ class RoundedButton(tk.Canvas):
         self._fg = fg
         self._hover = hover
         self._radius = radius
+        self._enabled = True
         self._draw(False)
         self.bind("<Enter>", lambda e: self._draw(True))
         self.bind("<Leave>", lambda e: self._draw(False))
         self.bind("<Button-1>", lambda e: self._click())
 
+    def set_enabled(self, enabled):
+        self._enabled = bool(enabled)
+        try:
+            self._draw(False)
+        except Exception:
+            pass
+
+    def set_colors(self, bg, fg=None, hover=None):
+        self._bg = bg
+        if fg is not None:
+            self._fg = fg
+        if hover is not None:
+            self._hover = hover
+        try:
+            self._draw(False)
+        except Exception:
+            pass
+
+    def set_text(self, text):
+        self._text = text
+        try:
+            self._draw(False)
+        except Exception:
+            pass
+
     def _draw(self, hover):
         self.delete("all")
         w = int(self["width"])
         h = int(self["height"])
-        fill = self._hover if hover else self._bg
+        if getattr(self, "_enabled", True):
+            fill = self._hover if hover else self._bg
+            fg = self._fg
+        else:
+            fill, fg = "#3a414c", "#8290a8"
         _rounded_rect(self, 2, 2, w-2, h-2, self._radius, fill)
-        self.create_text(w/2, h/2, text=self._text, fill=self._fg,
+        self.create_text(w/2, h/2, text=self._text, fill=fg,
                          font=("Segoe UI", 10, "bold"))
 
     def _click(self):
-        if callable(self._command):
+        if getattr(self, "_enabled", True) and callable(self._command):
             self._command()
 
 
@@ -257,10 +287,13 @@ class DemoApp(tk.Tk):
         self.data_count_var = tk.IntVar(value=5)
         self.method_var = tk.StringVar(value="supervised")
         self.preset_var = tk.StringVar(value="CUSTOM")
+        self.power_var = tk.BooleanVar(value=True)
+        self._power_button = None
         self.occupied_var = tk.BooleanVar(value=True)
         self.night_var = tk.BooleanVar(value=False)
         self.saver_var = tk.BooleanVar(value=False)
         self.data_stats_var = tk.StringVar(value="")
+        self.fopl_caption_var = tk.StringVar(value="")
         self.rl_stats_var = tk.StringVar(value="")
         self.auto_mode_var = tk.BooleanVar(value=False)
         self._auto_job = None
@@ -534,10 +567,14 @@ class DemoApp(tk.Tk):
         self.bind("<Escape>", lambda e: self.reset_controls())
 
     def _keyboard_temp(self, amount):
+        if not self.power_var.get():
+            return
         self.temp_var.set(max(10, min(35, int(self.temp_var.get()) + amount)))
         self._update_fuzzy_only()
 
     def _keyboard_step(self, amount):
+        if not self.power_var.get():
+            return
         self._step_value(self.rl_var, amount, 1, 20, self._on_settings_changed)
 
     def _on_mousewheel(self, event):
@@ -721,11 +758,17 @@ class DemoApp(tk.Tk):
 
         action_row = tk.Frame(controls, bg=self.PANEL)
         action_row.pack(fill="x", padx=18, pady=(0, 10))
+        self._power_button = RoundedButton(
+            action_row, text="POWER ON", command=self._toggle_power,
+            bg="#22c55e", fg="#06281c", hover="#16a34a",
+            width=118, height=34, radius=16
+        )
+        self._power_button.pack(side="left")
         RoundedButton(
             action_row, text="Run System", command=self.run_demo,
             bg=self.ACCENT, fg="#ffffff", hover="#6a9fff",
             width=128, height=34, radius=16
-        ).pack(side="left")
+        ).pack(side="left", padx=(10, 0))
         RoundedButton(
             action_row, text="Reset", command=self.reset_controls,
             bg=self.CARD_2, fg=self.TEXT, hover="#2d3b48",
@@ -810,6 +853,9 @@ class DemoApp(tk.Tk):
                                   font=("Consolas", 7, "bold"))
             name_label.pack()
             self._fopl_leds[predicate] = (dot, halo, core, spec, name_label, color)
+        tk.Label(led_inner, textvariable=self.fopl_caption_var,
+                 bg=self.CARD, fg=self.MUTED, font=("Consolas", 8),
+                 anchor="w", justify="left").pack(fill="x", padx=16, pady=(0, 10))
 
         output_title = tk.Frame(body, bg=self.BG)
         output_title.pack(fill="x", pady=(0, 6))
@@ -1808,7 +1854,7 @@ class DemoApp(tk.Tk):
 
     def _auto_run(self):
         self._auto_job = None
-        if self.auto_mode_var.get():
+        if self.auto_mode_var.get() and self.power_var.get():
             self.run_demo(auto=True)
             # Keep the loop alive: RL retrains and data reprocesses every
             # 5 seconds until Auto Mode is switched off. Single chain only —
@@ -1839,9 +1885,71 @@ class DemoApp(tk.Tk):
             f"episodes={len(values)}   best={best:.2f}   avg={average:.2f}   latest={latest:.2f}"
         )
 
+    def _toggle_power(self):
+        self._set_power(not self.power_var.get())
+
+    def _set_power(self, on):
+        on = bool(on)
+        self.power_var.set(on)
+        if self._power_button is not None:
+            try:
+                if on:
+                    self._power_button.set_colors("#22c55e", "#06281c", "#16a34a")
+                    self._power_button.set_text("POWER ON")
+                else:
+                    self._power_button.set_colors("#3a414c", "#8290a8", "#3a414c")
+                    self._power_button.set_text("POWER OFF")
+            except Exception:
+                pass
+        self._set_controls_enabled(on)
+        if on:
+            self._refresh_all()
+        else:
+            try:
+                for _canvas, _halo, _core, _spec, _label, _color in getattr(
+                        self, "_fopl_leds", {}).values():
+                    _canvas.itemconfig(_halo, fill="", outline="")
+                    _canvas.itemconfig(_core, fill=self.BG, outline=self.BORDER)
+                    _canvas.itemconfig(_spec, state="hidden")
+                    _label.configure(fg=self.MUTED)
+            except Exception:
+                pass
+            self.fuzzy_result_var.set("STANDBY  //  POWER OFF")
+            self.status_var.set("SYSTEM OFF  //  STANDBY")
+
+    def _set_controls_enabled(self, on):
+        skip = {id(self._power_button)}
+        try:
+            skip.add(id(self.theme_button))
+        except Exception:
+            pass
+
+        def walk(widget):
+            for child in widget.winfo_children():
+                if id(child) in skip:
+                    continue
+                try:
+                    if isinstance(child, RoundedButton):
+                        child.set_enabled(on)
+                    elif isinstance(child, (ttk.Scale, ttk.Combobox, ttk.Button,
+                                            ttk.Scrollbar, ttk.Progressbar)):
+                        child.state(["!disabled"] if on else ["disabled"])
+                    elif isinstance(child, (tk.Checkbutton, tk.Scale, tk.OptionMenu)):
+                        child.configure(state="normal" if on else "disabled")
+                except Exception:
+                    pass
+                walk(child)
+
+        try:
+            walk(self)
+        except Exception:
+            pass
+
     def _refresh_fopl(self):
         # LED-only verdict: light one dot per active action predicate.
         # Never raises: a broken advisor must not take down the fuzzy view.
+        if not self.power_var.get():
+            return
         try:
             temperature = int(self.temp_var.get())
         except Exception:
@@ -1874,6 +1982,18 @@ class DemoApp(tk.Tk):
                     name_label.configure(fg=self.MUTED)
             except Exception:
                 pass
+        try:
+            fired = advisor.get("fired", [])
+            if fired:
+                first = fired[0]
+                name = first.split()[0]
+                conclusion = first.split("→")[-1].strip() if "→" in first else ""
+                caption = f"LAST RULE: {name}" + (f"  →  {conclusion}" if conclusion else "")
+            else:
+                caption = "LAST RULE: none fired"
+            self.fopl_caption_var.set(caption)
+        except Exception:
+            pass
 
     def _render_all(self, result):
         self._last_result = result
@@ -1908,6 +2028,8 @@ class DemoApp(tk.Tk):
         self._update_module_statuses(True)
 
     def _update_fuzzy_only(self, animate=True):
+        if not self.power_var.get():
+            return
         temperature = int(self.temp_var.get())
         system = FuzzySystem()
         system.set_temperature(temperature)
@@ -1935,6 +2057,8 @@ class DemoApp(tk.Tk):
         self.status_var.set("PARAMETER CHANGED  //  RUN SYSTEM TO REFRESH")
 
     def _apply_preset_value(self, name, temperature, episodes, points):
+        if not self.power_var.get():
+            return
         self.preset_var.set(name)
         self.temp_var.set(temperature)
         self.rl_var.set(episodes)
@@ -1969,6 +2093,8 @@ class DemoApp(tk.Tk):
         step()
 
     def _refresh_all(self, auto=False):
+        if not self.power_var.get():
+            return
         try:
             result = run_demo(
                 int(self.temp_var.get()), int(self.rl_var.get()),
@@ -1982,6 +2108,8 @@ class DemoApp(tk.Tk):
             self._set_error(str(exc))
 
     def run_demo(self, auto=False):
+        if not self.power_var.get():
+            return
         self.status_var.set(
             "AUTO PROCESSING  //  AI MODULES ACTIVE" if auto
             else "PROCESSING  //  AI MODULES ACTIVE"
@@ -2004,6 +2132,8 @@ class DemoApp(tk.Tk):
                 )
 
     def reset_controls(self):
+        if not self.power_var.get():
+            return
         if getattr(self, "_auto_job", None) is not None:
             try:
                 self.after_cancel(self._auto_job)
