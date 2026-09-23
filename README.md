@@ -1,5 +1,8 @@
 # AI Systems Project
 
+![Tests](https://github.com/TheKIAR/AC-Control-AI-Systems-Project/actions/workflows/tests.yml/badge.svg)
+
+
 A Python educational AI project that demonstrates four approaches:
 
 - **Fuzzy logic** for temperature control
