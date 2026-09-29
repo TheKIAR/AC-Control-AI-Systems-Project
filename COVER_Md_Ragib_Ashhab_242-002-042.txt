@@ -1,0 +1,16 @@
+Dept of CSE
+Primeasia University
+CSE-334, Project, Marks: 60
+
+Project Name: Development of Fuzzy Logic, FOPL and Reinforcement Learning Based Smart Room Control System
+Student Name: Md. Ragib Ashhab
+ID: 242-002-042
+Semester: Summer 2026
+Submission Date: 24 September 2026
+
+Problems Covered (any three):
+1. Fuzzy logic based AI system to control air condition
+2. First-Order Predicate Logic (FOPL) based AI system - Smart Room System
+3. Reinforcement learning based AI system - Goal Finding System
+
+Note: Data driven method included as extension.
