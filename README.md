@@ -2,8 +2,14 @@
 
 <p align="center"><strong>Fuzzy Logic • Predicate Logic • Reinforcement Learning • Data Pipelines</strong><br><em>An educational AI system that turns room conditions into explainable control decisions.</em></p>
 
-<p align="center"><a href="https://github.com/TheKIAR/AC-Control-AI-Systems-Project"><img src="https://github.com/TheKIAR/AC-Control-AI-Systems-Project/blob/main/assets/runtime-screenshot.png?raw=true" alt="AI Control Systems runtime" width="820"></a></p>
+<p align="center"><a href="https://github.com/TheKIAR/AC-Control-AI-Systems-Project"><img src="./assets/runtime-screenshot.png" alt="AI Control Systems runtime" width="820"></a></p>
 <p align="center"><img src="https://github.com/TheKIAR/AC-Control-AI-Systems-Project/actions/workflows/tests.yml/badge.svg" alt="Tests"></p>
+
+## 🎬 See it in action
+
+<p align="center"><img src="./assets/demo.gif" alt="AI Control Systems demo" width="820"></p>
+
+The demo shows the interactive AI control workflow running in the desktop GUI — from room conditions and fuzzy reasoning through explainable logic and learning outputs.
 
 ## 👋 What is this?
 A hands-on Python AI project exploring four complementary approaches to intelligent room control.
