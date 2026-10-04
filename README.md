@@ -1,192 +1,140 @@
-# AI Systems Project
+# 🤖 AI Control Systems Lab
 
-![Runtime Screenshot](assets/runtime-screenshot.png)
+<p align="center">
+  <img src="assets/runtime-screenshot.png" alt="AI Control Systems runtime" width="850">
+</p>
 
-![Runtime Demo](assets/demo.gif)
-![Tests](https://github.com/TheKIAR/AC-Control-AI-Systems-Project/actions/workflows/tests.yml/badge.svg)
+<p align="center">
+  <strong>Fuzzy Logic • Predicate Logic • Reinforcement Learning • Data Processing</strong><br>
+  An approachable educational AI playground for experimenting with intelligent room-control systems.
+</p>
 
+<p align="center">
+  <a href="https://github.com/TheKIAR/AC-Control-AI-Systems-Project/actions/workflows/tests.yml"><img src="https://github.com/TheKIAR/AC-Control-AI-Systems-Project/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/TheKIAR/AC-Control-AI-Systems-Project"><img src="https://img.shields.io/badge/Python-3.11%2B-blue?logo=python" alt="Python 3.11+"></a>
+  <img src="https://img.shields.io/badge/AI-Educational-orange" alt="Educational AI">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
+</p>
 
-A Python educational AI project that demonstrates four approaches:
+---
 
-- **Fuzzy logic** for temperature control
-- **First-Order Predicate Logic (FOPL)** for a smart-room advisor
-- **Q-learning-style reinforcement learning** in a small discrete environment
-- **Data generation and processing** for supervised and unsupervised examples
+## 🌟 What is this?
 
-The project includes a Tkinter/Matplotlib desktop GUI, a console mode, experiments, and automated tests.
+This project brings several AI techniques together in one interactive desktop application. Instead of treating each algorithm as a disconnected assignment, it lets you **see how different reasoning and learning approaches can work together**.
 
-## Features
+### 🧩 The AI stack
 
-### Fuzzy Logic
-The temperature controller uses bounded membership functions for:
-
-- Cold
-- Comfortable
-- Hot
-
-It converts the strongest membership into an action:
-
-| Temperature condition | Action |
+| Module | What it demonstrates |
 |---|---|
-| Cold | Increase Temperature |
-| Comfortable | Maintain Temperature |
-| Hot | Decrease Temperature |
+| 🌡️ **Fuzzy Logic** | Cold / Comfortable / Hot temperature reasoning |
+| 🧠 **FOPL** | Rule-based smart-room reasoning with explanation traces |
+| 🎯 **Reinforcement Learning** | Q-table learning in a small discrete environment |
+| 📊 **Data Pipeline** | Deterministic supervised & unsupervised sample generation |
+| 🖥️ **Interactive GUI** | Live controls, charts, themes, indicators and export |
 
-### FOPL Smart-Room Advisor
-The `src/fopl/` package contains a small forward-chaining knowledge base. It combines temperature bands with occupancy, night, and energy-saver facts to derive room-control actions and an explanation trace.
+## 🖼️ See it in action
 
-### Reinforcement Learning
-The RL module contains:
+<p align="center">
+  <img src="assets/runtime-screenshot.png" alt="Main AI systems GUI" width="820">
+</p>
 
-- `RLAgent` — Q-table based agent
-- `RLEnvironment` — discrete environment with a goal state
-- `RLTrainer` — training and evaluation
+<p align="center">
+  <img src="assets/demo.gif" alt="AI systems demo" width="820">
+</p>
 
-Training rewards are retained so the GUI can plot them.
+A classic, minimal GUI is included too:
 
-### Data-Driven Pipeline
-The project includes deterministic supervised and unsupervised sample generation, cleaning, transformation, and JSON save/load support.
+<p align="center">
+  <img src="assets/gui_classic.png" alt="Classic AI systems GUI" width="700">
+</p>
 
-## Project Structure
+## 🔬 How the system flows
 
 ```text
-AI-Systems-Project/
-├── assets/                 # Application assets
-├── data/                   # Small checked-in sample data
-├── docs/                   # Project documentation
-├── experiments/            # Experiment notes
-├── notebooks/              # Jupyter experiments
-├── scripts/                # Optional shell launchers
-├── src/
-│   ├── common/
-│   ├── data_driven/
-│   ├── fopl/
-│   ├── fuzzy_logic/
-│   ├── reinforcement_learning/
-│   └── main.py
-├── tests/
-├── requirements.txt
-├── run_gui.py
-├── run_gui.bat
-├── run_gui.ps1
-├── run_classic.py
-├── run_classic.bat
-├── run_classic.ps1
-├── setup.py
-└── README.md
+Temperature
+     ↓
+Fuzzy Logic
+     ↓
+FOPL Room Policy
+     ↓
+Reinforcement Learning
+     ↓
+Data Pipeline
+     ↓
+Integrated Result
 ```
 
-## Requirements
+### Interactive features
 
-- Python 3.11+
-- Tkinter for the desktop GUI
-- Dependencies listed in `requirements.txt`
+- ⚡ **Auto Mode** — refreshes the AI pipeline after temperature changes
+- 💡 **FOPL policy LEDs** — eleven live action indicators with room switches
+- 📡 **Module status** — Fuzzy, FOPL, RL and Data status at a glance
+- 📈 **RL statistics** — episodes, best reward, average reward and latest reward
+- 📦 **Export Report** — packages charts, summary information and logic traces
+- 🌗 **Dark / Light themes**
+- 🌤️ **Animated weather visuals**
+- 🧪 **GUI smoke testing** under Xvfb
 
-## Run
+## 🧪 Run it locally
 
-Clone the repository, then:
+**Requirements:** Python 3.11+, Tkinter, and the packages in `requirements.txt`.
 
 ```bash
 python -m pip install -r requirements.txt
 python run_gui.py
 ```
 
-For console mode:
+Console mode:
 
 ```bash
 python run_gui.py --console
-```
-
-You can also run:
-
-```bash
+# or
 python src/main.py --console
 ```
 
-There are two interfaces. The full GUI (`python run_gui.py`) has dark/light
-themes, one-row chart outputs with value legends, Cold/Normal/Hot presets that
-reconfigure temperature plus RL episodes plus data points, a Logic Advisor
-section with room tick-boxes, an 11-LED FOPL policy row with switches, a live
-weather sky, and an Export button that zips charts plus summary plus logic
-trace. The classic GUI (`python run_classic.py`) is a plain white window with the
-same engine: sliders, three charts with best/average/mean guides, a text
-readout, advisor tick-boxes, and the LED row — no animations.
-
-![Full GUI](assets/gui_main.png)
-![Classic GUI](assets/gui_classic.png)
-
-The main app is at v2.0 and the classic app at v1.0 (shown in their window
-title bars, mirrored in `setup.py` and `src/version.py`). For the viva walkthrough see [docs/VIVA_DEMO.md](docs/VIVA_DEMO.md).
-
-The GUI lets you adjust temperature, RL episode count, data-point count, and the data-generation method. The Export button saves charts, a text summary, and the logic trace into the local `outputs/` directory.
-
-## Testing
-
-Run all tests with:
+Run the test suite:
 
 ```bash
 pytest
 ```
 
-The tests cover fuzzy decisions and memberships, reinforcement-learning behavior, data generation/pipeline behavior, FOPL behavior, and visual-output generation.
-
-
-
-## GUI Preview & AI Flow
-
-The desktop interface uses a rounded cyan-monochrome design with dark/light themes, animated weather visuals, live module indicators, and FOPL policy LEDs.
-
-The main interaction flow is:
+## 🗂️ Project structure
 
 ```text
-Temperature
-    ↓
-Fuzzy Logic
-    ↓
-FOPL Room Policy
-    ↓
-Reinforcement Learning
-    ↓
-Data Pipeline
-    ↓
-Integrated Result
+assets/                    # Screenshots and demo media
+data/                      # Sample data
+docs/                      # Documentation
+experiments/               # Experiment notes
+notebooks/                 # Jupyter experiments
+scripts/                   # Optional launchers
+src/
+├── common/
+├── data_driven/
+├── fopl/
+├── fuzzy_logic/
+├── reinforcement_learning/
+└── main.py
+tests/
 ```
 
-### Interactive features
+## 🧠 Why I built it
 
-- **Auto Mode** — temperature changes trigger a short debounce and then refresh the full AI pipeline.
-- **FOPL policy LEDs** — eleven action lights with room switches, so every policy output can be demonstrated live.
-- **Module status indicators** — live status for Fuzzy, FOPL, RL, and Data modules.
-- **RL statistics** — episode count, best reward, average reward, and latest reward.
-- **Export Report** — packages charts, summary information, and FOPL inference into a ZIP file.
-- **GUI smoke test** — the CI pipeline launches the Tkinter interface under Xvfb and checks construction plus theme switching.
+This is an educational project, not a production HVAC controller. The algorithms are intentionally compact and inspectable so the ideas behind **reasoning, learning and data processing** remain easy to explore.
 
-## Windows Executable
+## 🚀 Future direction
 
-Two launchers ship in `dist/` (built locally, never committed):
+- More realistic control environments
+- Richer reinforcement-learning experiments
+- More explainable AI traces
+- Additional data-generation scenarios
+- Expanded visualization and reporting
 
-- `AISystemsProject.exe` — the full GUI (themes, animations, LEDs, export).
-- `AISystemsProjectClassic.exe` — the plain white GUI (same engine, no animations).
+## 👋 Connect
 
-The repository includes an application icon and Windows launcher scripts (`run_gui.bat/.ps1`, `run_classic.bat/.ps1`). If you want to redistribute, rebuild locally with PyInstaller rather than committing the generated `build/` or `dist/` directories.
+Built by **Md. Ragib Ashhab**.
 
-## Notes
+🌐 [Portfolio](https://ragibashhab.netlify.app/) · 💼 [LinkedIn](https://www.linkedin.com/in/md-ragib-ashhab-768a19240/) · 🔗 [Linktree](https://linktr.ee/RagibAshhab) · 🐙 [GitHub](https://github.com/TheKIAR)
 
-This is an educational project rather than a production HVAC controller. The fuzzy and reinforcement-learning components are intentionally small so their algorithms can be inspected and studied easily.
+---
 
-Generated runtime output is ignored by Git. Keep credentials, API keys, and machine-specific configuration outside the repository.
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE).
-
-
-## 🌐 Links
-
-**Portfolio:** https://ragibashhab.netlify.app/
-
-**GitHub:** https://github.com/TheKIAR
-
-**LinkedIn:** https://www.linkedin.com/in/md-ragib-ashhab-768a19240/
-
-**Linktree:** https://linktr.ee/RagibAshhab
+> **Build it. Understand it. Test it. Make it useful.**
